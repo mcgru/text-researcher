@@ -50,7 +50,7 @@ development_status:
   epic-1-retrospective: optional
 
   epic-2: backlog
-  2-1-tui-foundation-panel-trait-and-app-shell: backlog
+  2-1-tui-foundation-panel-trait-and-app-shell: done
   2-2-textpane-text-display-and-navigation: backlog
   2-3-propspane-word-properties: backlog
   2-4-menubar-statusbar-and-shortcuts: backlog
