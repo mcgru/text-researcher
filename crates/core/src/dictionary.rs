@@ -45,6 +45,11 @@ impl OpenCorporaDict {
         Ok(OpenCorporaDict { conn: Mutex::new(conn), path })
     }
 
+    /// Return the database file path.
+    pub fn path(&self) -> &Path {
+        &self.path
+    }
+
     /// Look up all entries for a word form.
     pub fn lookup(&self, word: &str) -> Result<Vec<DictEntry>, CoreError> {
         let word_clean = word.to_lowercase();

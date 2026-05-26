@@ -51,6 +51,10 @@ impl TextPane {
         self.cursor_word_index
     }
 
+    pub fn word_count(&self) -> usize {
+        self.words.len()
+    }
+
     fn move_cursor(&mut self, delta: isize) -> bool {
         let new = self.cursor_word_index as isize + delta;
         if new >= 0 && (new as usize) < self.words.len() {

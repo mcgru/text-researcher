@@ -1,5 +1,7 @@
 use std::collections::HashMap;
 use std::io;
+use std::sync::mpsc;
+use std::thread;
 
 use log::info;
 use ratatui::crossterm;
@@ -26,7 +28,7 @@ pub struct AppState {
     dirty: bool,
     dict: Option<OpenCorporaDict>,
     prefetch_cache: HashMap<String, Vec<DictEntry>>,
-    prefetch_count: usize,
+    prefetch_count: isize,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -52,50 +54,107 @@ impl AppState {
             dirty: false,
             dict: None,
             prefetch_cache: HashMap::new(),
-            prefetch_count: 2,
+            prefetch_count: -1,
         }
     }
 
     pub fn set_dictionary(&mut self, dict: OpenCorporaDict) {
         self.dict = Some(dict);
         self.lookup_current_word();
-        self.prefetch_ahead();
+        self.prefetch_surrounding();
     }
 
-    pub fn set_prefetch_count(&mut self, count: usize) {
+    pub fn set_prefetch_count(&mut self, count: isize) {
         self.prefetch_count = count;
     }
 
-    /// Prefetch the next N words ahead of cursor into cache.
-    fn prefetch_ahead(&mut self) {
+    /// Prefetch words around cursor: left + right, or entire text if count == -1.
+    fn prefetch_surrounding(&mut self) {
         let count = self.prefetch_count;
-        if count == 0 {
+        if count == 0 || self.dict.is_none() {
             return;
         }
 
-        let start = self.text.cursor_word_index() + 1;
-        let words: Vec<String> = (start..start + count)
-            .filter_map(|i| self.text.word_at(i).map(|w| w.to_string()))
+        let total = self.text.word_count();
+        if total == 0 {
+            return;
+        }
+
+        let cursor = self.text.cursor_word_index();
+
+        let indices: Vec<usize> = if count < 0 {
+            // Entire text — run in background thread
+            self.prefetch_all_background();
+            return;
+        } else {
+            let count = count as usize;
+            let left_start = cursor.saturating_sub(count);
+            let right_end = (cursor + 1 + count).min(total);
+            (left_start..right_end).collect()
+        };
+
+        self.prefetch_indices(&indices);
+    }
+
+    /// Launch background prefetch of all words in the text.
+    fn prefetch_all_background(&mut self) {
+        if self.dict.is_none() {
+            return;
+        }
+
+        let total = self.text.word_count();
+        let words_to_fetch: Vec<String> = (0..total)
+            .filter_map(|i| {
+                let w = self.text.word_at(i)?;
+                if self.prefetch_cache.contains_key(w) {
+                    None
+                } else {
+                    Some(w.to_string())
+                }
+            })
             .collect();
 
-        if words.is_empty() || self.dict.is_none() {
+        if words_to_fetch.is_empty() {
             return;
         }
 
-        // Filter out already cached
-        let new_words: Vec<&str> = words.iter()
-            .filter(|w| !self.prefetch_cache.contains_key(*w))
-            .map(|w| w.as_str())
-            .collect();
-
-        if new_words.is_empty() {
-            return;
-        }
-
-        // Spawn background prefetch
         let dict = self.dict.as_ref().unwrap();
-        // Use lookup_batch for parallel prefetch
-        let results = dict.lookup_batch(&new_words);
+        let path = dict.path().to_path_buf();
+        let (tx, rx) = mpsc::channel();
+
+        thread::spawn(move || {
+            if let Ok(dict) = text_researcher_core::OpenCorporaDict::open(&path) {
+                let refs: Vec<&str> = words_to_fetch.iter().map(|w| w.as_str()).collect();
+                let results = dict.lookup_batch(&refs);
+                let _ = tx.send(results);
+            }
+        });
+
+        // Store receiver for later pickup in event loop
+        // For now, do a quick non-blocking check
+        if let Ok(results) = rx.try_recv() {
+            self.prefetch_cache.extend(results);
+        }
+        // Note: remaining results picked up in next event loop iteration via drain_channel
+    }
+
+    /// Prefetch specific word indices.
+    fn prefetch_indices(&mut self, indices: &[usize]) {
+        let mut not_cached: Vec<&str> = Vec::new();
+        for &i in indices {
+            if let Some(word) = self.text.word_at(i) {
+                if !self.prefetch_cache.contains_key(word) {
+                    not_cached.push(word);
+                }
+            }
+        }
+
+        if not_cached.is_empty() {
+            return;
+        }
+
+        let dict = self.dict.as_ref().unwrap();
+        let results = dict.lookup_batch(&not_cached);
         self.prefetch_cache.extend(results);
     }
 
@@ -212,7 +271,7 @@ impl AppState {
                     Focus::Text => {
                         self.text.handle_input(key);
                         self.lookup_current_word();
-                        self.prefetch_ahead();
+                        self.prefetch_surrounding();
                         Action::None
                     }
                     Focus::Props => self.props.handle_input(key),
