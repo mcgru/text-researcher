@@ -1571,6 +1571,7 @@ dependencies = [
  "env_logger",
  "log",
  "ratatui",
+ "serde_json",
  "text-researcher-core",
  "udpipe-client",
 ]
