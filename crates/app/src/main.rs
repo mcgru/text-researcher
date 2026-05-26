@@ -18,40 +18,29 @@ fn main() -> anyhow::Result<()> {
     }
 
     if cli.interactive {
-        return run_tui();
+        return run_tui(&cli);
     }
 
     cli::batch::run_batch(&cli)
 }
 
-fn run_tui() -> anyhow::Result<()> {
+fn run_tui(cli: &Cli) -> anyhow::Result<()> {
     tui::app::check_terminal_size()?;
 
     let mut terminal = ratatui::init();
     let mut app = tui::app::AppState::new();
 
-    // Placeholder panel
-    struct PlaceholderPanel {
-        title: String,
-    }
-    impl tui::panels::Panel for PlaceholderPanel {
-        fn render(&self, frame: &mut ratatui::Frame, area: ratatui::layout::Rect, _focused: bool) {
-            use ratatui::widgets::Paragraph;
-            frame.render_widget(
-                Paragraph::new(format!("{} — press Tab to switch panels, q to quit", self.title)),
-                area,
-            );
-        }
-        fn handle_input(&mut self, _key: ratatui::crossterm::event::KeyEvent) -> tui::panels::Action {
-            tui::panels::Action::None
-        }
-        fn title(&self) -> &str {
-            &self.title
-        }
+    // TextPane with file content if provided
+    let mut text_pane = tui::panels::TextPane::new();
+    if let Some(input) = &cli.input {
+        let content = std::fs::read_to_string(input)?;
+        text_pane.set_text(&content);
     }
 
-    app.add_panel(Box::new(PlaceholderPanel { title: "TextPane".into() }));
-    app.add_panel(Box::new(PlaceholderPanel { title: "PropsPane".into() }));
+    let props_pane = tui::panels::PropsPane::new();
+
+    app.add_panel(Box::new(text_pane));
+    app.add_panel(Box::new(props_pane));
 
     let result = app.run(&mut terminal);
     ratatui::restore();

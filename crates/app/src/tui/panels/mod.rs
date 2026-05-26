@@ -1,3 +1,6 @@
+pub mod props;
+pub mod text;
+
 use ratatui::crossterm::event::KeyEvent;
 use ratatui::layout::Rect;
 use ratatui::Frame;
@@ -24,3 +27,6 @@ pub trait Panel {
         true
     }
 }
+
+pub use props::PropsPane;
+pub use text::TextPane;

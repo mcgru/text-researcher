@@ -49,10 +49,10 @@ development_status:
   1-4-batch-cli-args-config-and-json-output: done
   epic-1-retrospective: optional
 
-  epic-2: backlog
+  epic-2: in-progress
   2-1-tui-foundation-panel-trait-and-app-shell: done
-  2-2-textpane-text-display-and-navigation: backlog
-  2-3-propspane-word-properties: backlog
+  2-2-textpane-text-display-and-navigation: done
+  2-3-propspane-word-properties: done
   2-4-menubar-statusbar-and-shortcuts: backlog
   2-5-project-save-and-load-trproj-trconf: backlog
   2-6-session-restore-on-startup: backlog
