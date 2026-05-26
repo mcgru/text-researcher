@@ -198,5 +198,28 @@ User: почини баг с @v
   → resolve_grammemes: lookup-map, не индексы; batch: best entry
 
 User: сохрани историю, запуш
+  → 0.5.4
+
+## 2026-05-26 — JSON Field Order & Word Cleaning
+
+### JSON Field Order Fix
+- serde_json::Map = BTreeMap (сортирует ключи алфавитно) → features, lemma, word
+- Решение: ручной `format!()` с фиксированным порядком: word, lemma, features
+- **0.5.5**
+
+### Word Cleaning
+- `trim_matches(|c| !c.is_alphanumeric() && c != '-')` — убирает кавычки, запятые, точки, тире
+- Применяется в TextPane (`parse_words`) и batch mode
+- **0.5.6**
+
+### Raw Conversation Flow (continued)
+
+User: ошибка — обратный порядок полей в json
+  → 0.5.5: ручной format!()
+
+User: удаляй знаки препинания, кавычки
+  → 0.5.6: clean_word()
+
+User: сохрани историю, закоммить, запуш
   → Этот раздел
 ```
