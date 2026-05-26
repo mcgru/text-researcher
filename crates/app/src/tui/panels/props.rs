@@ -54,26 +54,31 @@ impl Panel for PropsPane {
                 Style::default().fg(Color::DarkGray),
             )));
         } else {
+            // Word at top
             lines.push(Line::from(vec![
-                Span::styled("Слово: ", Style::default().fg(Color::Cyan)),
-                Span::raw(&self.word),
+                Span::styled(&self.word, Style::default().fg(Color::White).add_modifier(ratatui::style::Modifier::BOLD)),
             ]));
+            lines.push(Line::from(""));
+
+            // Lemma
             lines.push(Line::from(vec![
-                Span::styled("Лемма: ", Style::default().fg(Color::Cyan)),
+                Span::styled("Лемма : ", Style::default().fg(Color::Cyan)),
                 Span::raw(&self.lemma),
             ]));
+
+            // Part of speech
             lines.push(Line::from(vec![
-                Span::styled("Часть речи: ", Style::default().fg(Color::Cyan)),
+                Span::styled("Часть речи : ", Style::default().fg(Color::Cyan)),
                 Span::raw(upostag_human(&self.upostag)),
             ]));
 
-            // Display features
+            // Features
             let mut feats: Vec<&String> = self.features.keys().collect();
             feats.sort();
             for key in feats {
                 if let Some(value) = self.features.get(key) {
                     lines.push(Line::from(vec![
-                        Span::styled(format!("  {}: ", key), Style::default().fg(Color::Yellow)),
+                        Span::styled(format!("{} : ", key), Style::default().fg(Color::Yellow)),
                         Span::raw(value),
                     ]));
                 }

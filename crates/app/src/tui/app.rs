@@ -69,19 +69,19 @@ impl AppState {
         // Menu
         self.menu.render(frame, chunks[0], self.focused == Focus::Menu);
 
-        // Main: text (60%) + props (40%)
+        // Main: props (30%) + text (70%)
         let main = Layout::default()
             .direction(Direction::Horizontal)
-            .constraints([Constraint::Percentage(60), Constraint::Percentage(40)])
+            .constraints([Constraint::Percentage(30), Constraint::Percentage(70)])
             .split(chunks[1]);
 
-        self.text.render(frame, main[0], self.focused == Focus::Text);
-        self.props.render(frame, main[1], self.focused == Focus::Props);
+        self.props.render(frame, main[0], self.focused == Focus::Props);
+        self.text.render(frame, main[1], self.focused == Focus::Text);
 
         // Extras
         for (i, extra) in self.extras.iter().enumerate() {
             if self.focused == Focus::Extra(i) {
-                extra.render(frame, main[1], true);
+                extra.render(frame, main[0], true);
             }
         }
 
@@ -139,11 +139,13 @@ impl AppState {
 
     fn cycle_focus(&mut self) {
         self.focused = match self.focused {
-            Focus::Menu => Focus::Text,
-            Focus::Text => Focus::Props,
-            Focus::Props => Focus::Menu,
+            Focus::Menu => Focus::Props,
+            Focus::Props => Focus::Text,
+            Focus::Text => Focus::Menu,
             Focus::Extra(_) => Focus::Menu,
         };
+        // Update status bar with cursor position
+        self.status.update("", 1, self.text.cursor_word_index(), "RU", self.dirty);
     }
 
     fn save(&mut self) {
