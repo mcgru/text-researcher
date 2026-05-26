@@ -12,7 +12,7 @@ path = "src/main.rs"
 text-researcher-core = { path = "../core" }
 udpipe-ffi = { path = "../udpipe-ffi" }
 ratatui = "0.30"
-crossterm = "0.28"
+crossterm = "0.29"
 clap = { version = "4.6", features = ["derive"] }
 anyhow = "1"
 log = "0.4"
