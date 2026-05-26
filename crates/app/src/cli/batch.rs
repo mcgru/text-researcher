@@ -42,16 +42,24 @@ pub fn run_batch(cli: &Cli) -> anyhow::Result<()> {
                         for gram in &e.grammemes {
                             feats.insert(gram.name.clone(), gram.alias.clone().into());
                         }
-                        serde_json::json!({
-                            "word": word,
-                            "lemma": e.lemma,
-                            "features": feats
-                        })
+                        let mut obj = serde_json::Map::new();
+                        obj.insert("word".into(), (*word).into());
+                        obj.insert("lemma".into(), e.lemma.clone().into());
+                        obj.insert("features".into(), feats.into());
+                        serde_json::Value::Object(obj)
                     } else {
-                        serde_json::json!({ "word": word, "lemma": word_clean, "features": {} })
+                        let mut obj = serde_json::Map::new();
+                        obj.insert("word".into(), (*word).into());
+                        obj.insert("lemma".into(), word_clean.into());
+                        obj.insert("features".into(), serde_json::Map::new().into());
+                        serde_json::Value::Object(obj)
                     }
                 } else {
-                    serde_json::json!({ "word": word, "lemma": word_clean, "features": {} })
+                    let mut obj = serde_json::Map::new();
+                    obj.insert("word".into(), (*word).into());
+                    obj.insert("lemma".into(), word_clean.into());
+                    obj.insert("features".into(), serde_json::Map::new().into());
+                    serde_json::Value::Object(obj)
                 };
                 serde_json::to_string(&entry).unwrap_or_default()
             }).collect();
