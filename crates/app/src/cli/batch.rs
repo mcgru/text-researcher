@@ -33,7 +33,7 @@ pub fn run_batch(cli: &Cli) -> anyhow::Result<()> {
         "json" => {
             let entries: Vec<String> = words.iter().map(|word| {
                 let word_clean = word.trim_matches(|c: char| !c.is_alphanumeric() && c != '-');
-                let entry = if let Some(entry_list) = results.get(*word) {
+                if let Some(entry_list) = results.get(*word) {
                     // Pick the first entry with actual grammemes (skip virtual-only lemmas)
                     let best = entry_list.iter().find(|e| {
                         !e.grammemes.is_empty() || e.pos.is_some()
@@ -47,26 +47,17 @@ pub fn run_batch(cli: &Cli) -> anyhow::Result<()> {
                         for gram in &e.grammemes {
                             feats.insert(gram.name.clone(), gram.alias.clone().into());
                         }
-                        let mut obj = serde_json::Map::new();
-                        obj.insert("word".into(), (*word).into());
-                        obj.insert("lemma".into(), e.lemma.clone().into());
-                        obj.insert("features".into(), feats.into());
-                        serde_json::Value::Object(obj)
+                        let features_str = serde_json::to_string(&feats).unwrap_or_else(|_| "{}".into());
+                        format!(
+                            r#"{{"word":"{}","lemma":"{}","features":{}}}"#,
+                            *word, e.lemma, features_str
+                        )
                     } else {
-                        let mut obj = serde_json::Map::new();
-                        obj.insert("word".into(), (*word).into());
-                        obj.insert("lemma".into(), word_clean.into());
-                        obj.insert("features".into(), serde_json::Map::new().into());
-                        serde_json::Value::Object(obj)
+                        format!(r#"{{"word":"{}","lemma":"{}","features":{{}}}}"#, *word, word_clean)
                     }
                 } else {
-                    let mut obj = serde_json::Map::new();
-                    obj.insert("word".into(), (*word).into());
-                    obj.insert("lemma".into(), word_clean.into());
-                    obj.insert("features".into(), serde_json::Map::new().into());
-                    serde_json::Value::Object(obj)
-                };
-                serde_json::to_string(&entry).unwrap_or_default()
+                    format!(r#"{{"word":"{}","lemma":"{}","features":{{}}}}"#, *word, word_clean)
+                }
             }).collect();
             entries.join("\n")
         }
