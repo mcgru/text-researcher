@@ -30,6 +30,8 @@ pub struct AppState {
     dict: Option<OpenCorporaDict>,
     prefetch_cache: HashMap<String, Option<Vec<DictEntry>>>,
     prefetch_count: isize,
+    prefetch_rx: Option<mpsc::Receiver<HashMap<String, Option<Vec<DictEntry>>>>>,
+    prefetch_pending: bool,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -37,6 +39,7 @@ enum Focus {
     Menu,
     Text,
     Props,
+    Log,
     Extra(usize),
 }
 
@@ -57,128 +60,97 @@ impl AppState {
             dict: None,
             prefetch_cache: HashMap::new(),
             prefetch_count: -1,
+            prefetch_rx: None,
+            prefetch_pending: false,
         }
     }
 
     pub fn set_dictionary(&mut self, dict: OpenCorporaDict) {
         self.dict = Some(dict);
+        // Immediate: show properties for first word
         self.lookup_current_word();
-        self.prefetch_surrounding();
+        // Then start background prefetch
+        self.start_background_prefetch();
     }
 
     pub fn set_prefetch_count(&mut self, count: isize) {
         self.prefetch_count = count;
     }
 
-    /// Prefetch words around cursor: left + right, or entire text if count == -1.
-    fn prefetch_surrounding(&mut self) {
-        let count = self.prefetch_count;
-        if count == 0 || self.dict.is_none() {
+    /// Start background prefetch of remaining words (all text if count == -1).
+    fn start_background_prefetch(&mut self) {
+        if self.dict.is_none() || self.prefetch_count == 0 {
             return;
         }
 
         let total = self.text.word_count();
-        if total == 0 {
-            return;
-        }
-
         let cursor = self.text.cursor_word_index();
 
-        let indices: Vec<usize> = if count < 0 {
-            // Entire text — synchronous batch lookup (rayon-parallel)
-            let all: Vec<usize> = (0..total).collect();
-            self.prefetch_indices(&all);
-            return;
+        let indices: Vec<usize> = if self.prefetch_count < 0 {
+            // All words except current one
+            (0..total).filter(|&i| i != cursor).collect()
         } else {
-            let count = count as usize;
-            let left_start = cursor.saturating_sub(count);
-            let right_end = (cursor + 1 + count).min(total);
-            (left_start..right_end).collect()
+            let n = self.prefetch_count as usize;
+            let left = cursor.saturating_sub(n);
+            let right = (cursor + 1 + n).min(total);
+            (left..right).filter(|&i| i != cursor).collect()
         };
 
-        self.prefetch_indices(&indices);
-    }
-
-    /// Launch background prefetch of all words in the text.
-    fn prefetch_all_background(&mut self) {
-        if self.dict.is_none() {
-            return;
-        }
-
-        let total = self.text.word_count();
-        let words_to_fetch: Vec<String> = (0..total)
-            .filter_map(|i| {
-                let w = self.text.word_at(i)?;
-                if self.prefetch_cache.contains_key(w) {
-                    None
-                } else {
-                    Some(w.to_string())
-                }
-            })
+        let words: Vec<String> = indices.iter()
+            .filter_map(|&i| self.text.word_at(i))
+            .filter(|w| !self.prefetch_cache.contains_key(*w))
+            .map(|w| w.to_string())
             .collect();
 
-        if words_to_fetch.is_empty() {
+        if words.is_empty() {
             return;
         }
 
-        self.log.log(&format!("bg prefetch {} words…", words_to_fetch.len()));
+        self.log.log(&format!("bg prefetch {} words", words.len()));
+        self.prefetch_pending = true;
 
-        let dict = self.dict.as_ref().unwrap();
-        let path = dict.path().to_path_buf();
+        let dict_path = self.dict.as_ref().unwrap().path().to_path_buf();
         let (tx, rx) = mpsc::channel();
 
         thread::spawn(move || {
-            if let Ok(dict) = text_researcher_core::OpenCorporaDict::open(&path) {
-                let refs: Vec<&str> = words_to_fetch.iter().map(|w| w.as_str()).collect();
+            let mut results: HashMap<String, Option<Vec<DictEntry>>> = HashMap::new();
+            if let Ok(dict) = OpenCorporaDict::open(&dict_path) {
+                let refs: Vec<&str> = words.iter().map(|w| w.as_str()).collect();
                 let found = dict.lookup_batch(&refs);
-                // Build complete result: found words + negative cache for unfound
-                let mut results: HashMap<String, Option<Vec<DictEntry>>> = HashMap::new();
-                for word in &words_to_fetch {
+                for word in &words {
                     if let Some(entries) = found.get(word.as_str()) {
                         results.insert(word.clone(), Some(entries.clone()));
                     } else {
                         results.insert(word.clone(), None);
                     }
                 }
-                let _ = tx.send(results);
-            }
-        });
-
-        if let Ok(results) = rx.try_recv() {
-            self.prefetch_cache.extend(results);
-        }
-    }
-
-    /// Prefetch specific word indices.
-    fn prefetch_indices(&mut self, indices: &[usize]) {
-        let mut not_cached: Vec<&str> = Vec::new();
-        for &i in indices {
-            if let Some(word) = self.text.word_at(i) {
-                if !self.prefetch_cache.contains_key(word) {
-                    not_cached.push(word);
+            } else {
+                // Dict failed to open — mark all as not found
+                for word in &words {
+                    results.insert(word.clone(), None);
                 }
             }
-        }
+            let _ = tx.send(results);
+        });
 
-        if not_cached.is_empty() {
+        self.prefetch_rx = Some(rx);
+    }
+
+    /// Poll for background prefetch results in the event loop.
+    fn poll_prefetch(&mut self) {
+        if !self.prefetch_pending {
             return;
         }
-
-        self.log.log(&format!("prefetch {} words…", not_cached.len()));
-
-        let dict = self.dict.as_ref().unwrap();
-        let found = dict.lookup_batch(&not_cached);
-        for word in &not_cached {
-            if let Some(entries) = found.get(*word) {
-                self.prefetch_cache.insert(word.to_string(), Some(entries.clone()));
-                self.log.log_prefetch_done(word, true);
-            } else {
-                self.prefetch_cache.insert(word.to_string(), None);
-                self.log.log_prefetch_done(word, false);
+        if let Some(ref rx) = self.prefetch_rx {
+            if let Ok(results) = rx.try_recv() {
+                let count = results.len();
+                let found_count = results.values().filter(|v| v.is_some()).count();
+                self.prefetch_cache.extend(results);
+                self.prefetch_pending = false;
+                self.prefetch_rx = None;
+                self.log.log(&format!("bg done: {}/{} found", found_count, count));
             }
         }
-
-        self.log.log("prefetch done");
     }
 
     /// Look up the current word in the dictionary and update props pane.
@@ -255,7 +227,7 @@ impl AppState {
             .constraints([
                 Constraint::Length(1),  // menu
                 Constraint::Min(1),     // main area
-                Constraint::Length(6),  // log
+                Constraint::Length(4),  // log
                 Constraint::Length(1),  // status
             ])
             .split(frame.area());
@@ -283,10 +255,13 @@ impl AppState {
         self.status.render(frame, chunks[3], false);
 
         // Log
-        self.log.render(frame, chunks[2], false);
+        self.log.render(frame, chunks[2], self.focused == Focus::Log);
     }
 
     fn handle_events(&mut self) -> io::Result<()> {
+        // Always poll for background prefetch results
+        self.poll_prefetch();
+
         if event::poll(std::time::Duration::from_millis(16))? {
             if let Event::Key(key) = event::read()? {
                 if key.kind != KeyEventKind::Press { return Ok(()); }
@@ -318,10 +293,13 @@ impl AppState {
                     Focus::Text => {
                         self.text.handle_input(key);
                         self.lookup_current_word();
-                        self.prefetch_surrounding();
+                        if !self.prefetch_pending {
+                            self.start_background_prefetch();
+                        }
                         Action::None
                     }
                     Focus::Props => self.props.handle_input(key),
+                    Focus::Log => self.log.handle_input(key),
                     Focus::Extra(i) => self.extras[i].handle_input(key),
                 };
                 self.dispatch(action);
@@ -343,10 +321,10 @@ impl AppState {
         self.focused = match self.focused {
             Focus::Menu => Focus::Props,
             Focus::Props => Focus::Text,
-            Focus::Text => Focus::Menu,
+            Focus::Text => Focus::Log,
+            Focus::Log => Focus::Menu,
             Focus::Extra(_) => Focus::Menu,
         };
-        // Update status bar with cursor position
         self.status.update("", 1, self.text.cursor_word_index(), "RU", self.dirty);
     }
 
