@@ -31,6 +31,7 @@ pub struct AppState {
     prefetch_cache: HashMap<String, Option<Vec<DictEntry>>>,
     prefetch_count: isize,
     prefetch_rx: Option<mpsc::Receiver<HashMap<String, Option<Vec<DictEntry>>>>>,
+    prefetch_log_rx: Option<mpsc::Receiver<(String, bool)>>,
     prefetch_pending: bool,
 }
 
@@ -61,6 +62,7 @@ impl AppState {
             prefetch_cache: HashMap::new(),
             prefetch_count: -1,
             prefetch_rx: None,
+            prefetch_log_rx: None,
             prefetch_pending: false,
         }
     }
@@ -77,9 +79,9 @@ impl AppState {
         self.prefetch_count = count;
     }
 
-    /// Start background prefetch of remaining words (all text if count == -1).
+    /// Start background prefetch of remaining words in small batches with 50ms pauses.
     fn start_background_prefetch(&mut self) {
-        if self.dict.is_none() || self.prefetch_count == 0 {
+        if self.dict.is_none() || self.prefetch_count == 0 || self.prefetch_pending {
             return;
         }
 
@@ -87,7 +89,6 @@ impl AppState {
         let cursor = self.text.cursor_word_index();
 
         let indices: Vec<usize> = if self.prefetch_count < 0 {
-            // All words except current one
             (0..total).filter(|&i| i != cursor).collect()
         } else {
             let n = self.prefetch_count as usize;
@@ -106,38 +107,69 @@ impl AppState {
             return;
         }
 
-        self.log.log(&format!("bg prefetch {} words", words.len()));
+        self.log.log(&format!("prefetch {} words", words.len()));
         self.prefetch_pending = true;
 
         let dict_path = self.dict.as_ref().unwrap().path().to_path_buf();
         let (tx, rx) = mpsc::channel();
+        let (log_tx, log_rx) = mpsc::channel();
+
+        self.prefetch_log_rx = Some(log_rx);
 
         thread::spawn(move || {
+            let batch_size = 50usize;
+            let pause = std::time::Duration::from_millis(50);
             let mut results: HashMap<String, Option<Vec<DictEntry>>> = HashMap::new();
+
             if let Ok(dict) = OpenCorporaDict::open(&dict_path) {
-                let refs: Vec<&str> = words.iter().map(|w| w.as_str()).collect();
-                let found = dict.lookup_batch(&refs);
-                for word in &words {
-                    if let Some(entries) = found.get(word.as_str()) {
-                        results.insert(word.clone(), Some(entries.clone()));
-                    } else {
-                        results.insert(word.clone(), None);
+                for chunk in words.chunks(batch_size) {
+                    let refs: Vec<&str> = chunk.iter().map(|w| w.as_str()).collect();
+                    let found = dict.lookup_batch(&refs);
+
+                    for word in chunk {
+                        if let Some(entries) = found.get(word.as_str()) {
+                            results.insert(word.clone(), Some(entries.clone()));
+                            let _ = log_tx.send((word.clone(), true));
+                        } else {
+                            results.insert(word.clone(), None);
+                            let _ = log_tx.send((word.clone(), false));
+                        }
                     }
+
+                    // 50ms pause between batches for keyboard responsiveness
+                    std::thread::sleep(pause);
                 }
             } else {
-                // Dict failed to open — mark all as not found
                 for word in &words {
                     results.insert(word.clone(), None);
+                    let _ = log_tx.send((word.clone(), false));
                 }
             }
+
             let _ = tx.send(results);
         });
 
         self.prefetch_rx = Some(rx);
     }
 
-    /// Poll for background prefetch results in the event loop.
+    /// Poll for background prefetch results and log messages.
     fn poll_prefetch(&mut self) {
+        // Drain log messages
+        if let Some(ref rx) = self.prefetch_log_rx {
+            loop {
+                match rx.try_recv() {
+                    Ok((word, found)) => {
+                        self.log.log_prefetch_word(&word, found);
+                    }
+                    Err(mpsc::TryRecvError::Empty) => break,
+                    Err(mpsc::TryRecvError::Disconnected) => {
+                        self.prefetch_log_rx = None;
+                        break;
+                    }
+                }
+            }
+        }
+
         if !self.prefetch_pending {
             return;
         }
@@ -148,7 +180,7 @@ impl AppState {
                 self.prefetch_cache.extend(results);
                 self.prefetch_pending = false;
                 self.prefetch_rx = None;
-                self.log.log(&format!("bg done: {}/{} found", found_count, count));
+                self.log.log(&format!("done: {}/{} found", found_count, count));
             }
         }
     }
@@ -159,11 +191,14 @@ impl AppState {
             let word = word.to_string();
 
             // Check prefetch cache first
-            match self.prefetch_cache.get(&word).cloned() {
+            match self.prefetch_cache.get(&word) {
                 Some(Some(entries)) => {
                     if let Some(entry) = entries.first() {
-                        let entry = entry.clone();
-                        self.update_props_from_entry(&entry);
+                        let form = entry.form.clone();
+                        let lemma = entry.lemma.clone();
+                        let pos = entry.pos.clone();
+                        let grammemes: Vec<_> = entry.grammemes.iter().map(|g| (g.name.clone(), g.alias.clone())).collect();
+                        self.update_props_from_parts(&form, &lemma, &pos, &grammemes);
                         return;
                     }
                 }
@@ -199,14 +234,20 @@ impl AppState {
     }
 
     fn update_props_from_entry(&mut self, entry: &DictEntry) {
-        let mut feats = std::collections::HashMap::new();
-        if let Some(ref pos) = entry.pos {
-            feats.insert("Часть речи".to_string(), pos.clone());
+        let pos = entry.pos.clone();
+        let grammemes: Vec<_> = entry.grammemes.iter().map(|g| (g.name.clone(), g.alias.clone())).collect();
+        self.update_props_from_parts(&entry.form, &entry.lemma, &pos, &grammemes);
+    }
+
+    fn update_props_from_parts(&mut self, form: &str, lemma: &str, pos: &Option<String>, grammemes: &[(String, String)]) {
+        let mut feats = HashMap::new();
+        if let Some(ref p) = pos {
+            feats.insert("Часть речи".to_string(), p.clone());
         }
-        for gram in &entry.grammemes {
-            feats.insert(gram.name.clone(), gram.alias.clone());
+        for (name, alias) in grammemes {
+            feats.insert(name.clone(), alias.clone());
         }
-        self.props.update(&entry.form, &entry.lemma, &feats);
+        self.props.update(form, lemma, &feats);
     }
 
     pub fn is_running(&self) -> bool { self.running }

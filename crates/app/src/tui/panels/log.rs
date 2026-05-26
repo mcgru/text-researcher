@@ -26,8 +26,20 @@ impl LogPane {
 
     pub fn log(&mut self, msg: &str) {
         self.messages.push(msg.to_string());
+        self.trim();
+    }
+
+    /// Log a prefetched word with found/not-found mark.
+    pub fn log_prefetch_word(&mut self, word: &str, found: bool) {
+        let mark = if found { "✔" } else { "✘" };
+        self.messages.push(format!(" {} {}", mark, word));
+        self.trim();
+    }
+
+    fn trim(&mut self) {
         if self.messages.len() > MAX_MESSAGES {
-            self.messages.remove(0);
+            let excess = self.messages.len() - MAX_MESSAGES;
+            self.messages.drain(0..excess);
         }
         // Auto-scroll to bottom
         self.scroll = self.messages.len().saturating_sub(VISIBLE_LINES);
