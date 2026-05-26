@@ -43,7 +43,7 @@ story_location: _bmad-output/implementation-artifacts
 
 development_status:
   epic-1: in-progress
-  1-1-cargo-workspace-and-crate-structure: ready-for-dev
+  1-1-cargo-workspace-and-crate-structure: review
   1-2-ffi-bindings-to-libudpipe: backlog
   1-3-core-analyzer-modelmanager-and-analyzer: backlog
   1-4-batch-cli-args-config-and-json-output: backlog
