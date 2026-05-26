@@ -26,4 +26,8 @@ pub struct Cli {
     /// Verbose logging
     #[arg(short = 'v', long = "verbose")]
     pub verbose: bool,
+
+    /// Number of parallel threads (default: all logical CPUs)
+    #[arg(short = 'j', long = "jobs")]
+    pub jobs: Option<usize>,
 }

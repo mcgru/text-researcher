@@ -8,6 +8,15 @@ use text_researcher_core::OpenCorporaDict;
 fn main() -> anyhow::Result<()> {
     let cli = Cli::parse();
 
+    // Configure parallelism
+    if let Some(jobs) = cli.jobs {
+        rayon::ThreadPoolBuilder::new()
+            .num_threads(jobs)
+            .build_global()
+            .map_err(|e| anyhow::anyhow!("failed to set thread pool: {}", e))?;
+    }
+    // Default: rayon uses all logical CPUs
+
     if cli.verbose {
         env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("debug")).init();
     } else {

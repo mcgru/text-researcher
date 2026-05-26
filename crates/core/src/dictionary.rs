@@ -1,7 +1,9 @@
 use std::collections::HashMap;
-use std::path::Path;
+use std::path::{Path, PathBuf};
+use std::sync::Mutex;
 
 use log::debug;
+use rayon::prelude::*;
 use rusqlite::Connection;
 
 use crate::error::CoreError;
@@ -24,30 +26,69 @@ pub struct Grammeme {
 
 /// OpenCorpora dictionary backed by SQLite.
 pub struct OpenCorporaDict {
-    conn: Connection,
+    conn: Mutex<Connection>,
+    path: PathBuf,
 }
 
 impl OpenCorporaDict {
     /// Open the dictionary database at the given path.
     pub fn open<P: AsRef<Path>>(path: P) -> Result<Self, CoreError> {
-        let conn = Connection::open(path)
+        let path = path.as_ref().to_path_buf();
+        let conn = Connection::open(&path)
             .map_err(|e| CoreError::DictionaryError(format!("failed to open dictionary: {}", e)))?;
 
         // Enable WAL for concurrent reads
         conn.execute_batch("PRAGMA journal_mode=WAL; PRAGMA foreign_keys=OFF;")
             .map_err(|e| CoreError::DictionaryError(format!("pragma failed: {}", e)))?;
 
-        debug!("OpenCorpora dictionary opened");
-        Ok(OpenCorporaDict { conn })
+        debug!("OpenCorpora dictionary opened: {}", path.display());
+        Ok(OpenCorporaDict { conn: Mutex::new(conn), path })
     }
 
     /// Look up all entries for a word form.
     pub fn lookup(&self, word: &str) -> Result<Vec<DictEntry>, CoreError> {
-        let word_lower = word.to_lowercase();
-        let word_clean = word_lower.trim_matches(|c: char| !c.is_alphanumeric() && c != '-');
+        let word_clean = word.to_lowercase();
+        let word_clean = word_clean.trim_matches(|c: char| !c.is_alphanumeric() && c != '-');
+        let conn = self.conn.lock().unwrap();
+        self.lookup_impl(&conn, word_clean)
+    }
 
-        // Find matching forms
-        let mut stmt = self.conn.prepare(
+    /// Look up multiple words in parallel using all CPU cores.
+    ///
+    /// Each thread opens its own SQLite connection for concurrent reads.
+    /// Returns a map from word → entries.
+    pub fn lookup_batch(&self, words: &[&str]) -> HashMap<String, Vec<DictEntry>> {
+        let results: Mutex<HashMap<String, Vec<DictEntry>>> = Mutex::new(HashMap::new());
+
+        words.par_iter().for_each(|word| {
+            let word_clean = word.to_lowercase();
+            let word_clean: String = word_clean
+                .trim_matches(|c: char| !c.is_alphanumeric() && c != '-')
+                .to_string();
+
+            if word_clean.is_empty() {
+                return;
+            }
+
+            // Open per-thread connection
+            if let Ok(conn) = Connection::open(&self.path) {
+                let _ = conn.execute_batch("PRAGMA journal_mode=WAL; PRAGMA foreign_keys=OFF;");
+                if let Ok(entries) = self.lookup_impl(&conn, &word_clean) {
+                    if !entries.is_empty() {
+                        if let Ok(mut map) = results.lock() {
+                            map.insert((*word).to_string(), entries);
+                        }
+                    }
+                }
+            }
+        });
+
+        results.into_inner().unwrap_or_default()
+    }
+
+    /// Internal lookup using a specific connection.
+    fn lookup_impl(&self, conn: &Connection, word: &str) -> Result<Vec<DictEntry>, CoreError> {
+        let mut stmt = conn.prepare(
             "SELECT f.id, f.text, f.lemma_id, l.text
              FROM forms f
              JOIN lemmata l ON f.lemma_id = l.id
@@ -56,7 +97,7 @@ impl OpenCorporaDict {
         ).map_err(|e| CoreError::DictionaryError(format!("prepare failed: {}", e)))?;
 
         let rows: Vec<(i64, String, i64, String)> = stmt
-            .query_map([&word_clean], |row| {
+            .query_map([word], |row| {
                 Ok((row.get(0)?, row.get(1)?, row.get(2)?, row.get(3)?))
             })
             .map_err(|e| CoreError::DictionaryError(format!("query failed: {}", e)))?
@@ -71,8 +112,8 @@ impl OpenCorporaDict {
         let mut gram_cache: HashMap<String, Grammeme> = HashMap::new();
 
         for (form_id, form_text, lemma_id, lemma_text) in rows {
-            let form_grammemes = self.get_form_grammemes(form_id, &mut gram_cache)?;
-            let lemma_grammemes = self.get_lemma_grammemes(lemma_id, &mut gram_cache)?;
+            let form_grammemes = self.get_form_grammemes(conn, form_id, &mut gram_cache)?;
+            let lemma_grammemes = self.get_lemma_grammemes(conn, lemma_id, &mut gram_cache)?;
 
             let pos = lemma_grammemes.iter()
                 .find(|g| is_pos(&g.code))
@@ -94,8 +135,8 @@ impl OpenCorporaDict {
     }
 
     /// Get grammemes for a form, resolving codes to names.
-    fn get_form_grammemes(&self, form_id: i64, cache: &mut HashMap<String, Grammeme>) -> Result<Vec<Grammeme>, CoreError> {
-        let mut stmt = self.conn.prepare(
+    fn get_form_grammemes(&self, conn: &Connection, form_id: i64, cache: &mut HashMap<String, Grammeme>) -> Result<Vec<Grammeme>, CoreError> {
+        let mut stmt = conn.prepare(
             "SELECT grammeme_v FROM form_grammemes WHERE form_id = ?1"
         ).map_err(|e| CoreError::DictionaryError(format!("prepare failed: {}", e)))?;
 
@@ -105,12 +146,12 @@ impl OpenCorporaDict {
             .filter_map(|r| r.ok())
             .collect();
 
-        self.resolve_grammemes(&codes, cache)
+        self.resolve_grammemes(conn, &codes, cache)
     }
 
     /// Get grammemes for a lemma.
-    fn get_lemma_grammemes(&self, lemma_id: i64, cache: &mut HashMap<String, Grammeme>) -> Result<Vec<Grammeme>, CoreError> {
-        let mut stmt = self.conn.prepare(
+    fn get_lemma_grammemes(&self, conn: &Connection, lemma_id: i64, cache: &mut HashMap<String, Grammeme>) -> Result<Vec<Grammeme>, CoreError> {
+        let mut stmt = conn.prepare(
             "SELECT grammeme_v FROM lemma_grammemes WHERE lemma_id = ?1"
         ).map_err(|e| CoreError::DictionaryError(format!("prepare failed: {}", e)))?;
 
@@ -120,11 +161,11 @@ impl OpenCorporaDict {
             .filter_map(|r| r.ok())
             .collect();
 
-        self.resolve_grammemes(&codes, cache)
+        self.resolve_grammemes(conn, &codes, cache)
     }
 
     /// Resolve grammeme codes to names, using cache.
-    fn resolve_grammemes(&self, codes: &[String], cache: &mut HashMap<String, Grammeme>) -> Result<Vec<Grammeme>, CoreError> {
+    fn resolve_grammemes(&self, conn: &Connection, codes: &[String], cache: &mut HashMap<String, Grammeme>) -> Result<Vec<Grammeme>, CoreError> {
         let mut result = Vec::new();
         let mut missing: Vec<&str> = Vec::new();
 
@@ -145,7 +186,7 @@ impl OpenCorporaDict {
                 placeholders.join(",")
             );
 
-            let mut stmt = self.conn.prepare(&sql)
+            let mut stmt = conn.prepare(&sql)
                 .map_err(|e| CoreError::DictionaryError(format!("prepare failed: {}", e)))?;
 
             let params: Vec<&dyn rusqlite::types::ToSql> = missing.iter()
