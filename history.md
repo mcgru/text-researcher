@@ -150,4 +150,53 @@ User: отрицательный кеш
 
 User: история в history.md, закоммить, собрать, запуш
   → Этот раздел
+
+## 2026-05-26 — Prefetch, Log, Batch Mode Fixes
+
+### Background Prefetch Evolution
+- **0.4.4:** prefetch_cache, prefetch_surrounding()
+- **0.4.5:** --prefetch -1 (весь текст в фоне), bidirectional
+- **0.4.6:** negative cache (None для не найденных)
+- **0.4.8:** LogPane — дебаг-панель 6 строк
+- **0.4.9:** фикс: background prefetch через thread::spawn, не блокирует UI, LogPane скроллируемый, Tab: Menu→Props→Text→Log
+- **0.4.10:** 50ms пауза между батчами, пословное логгирование через канал
+- **0.4.11:** батч = 2 слова, лог слова через запятую на одной строке
+- **0.4.12:** рамки (borders) на TextPane, PropsPane, LogPane
+
+### Batch Mode Overhaul
+- **0.5.0:** batch mode переписан на dictionary lookup (вместо UDPipe), `-f json|txt`
+- **0.5.1:** компактный JSON — одна строка на слово
+- **0.5.2:** порядок полей JSON: word → lemma → features
+- **0.5.3:** фикс resolve_grammemes — lookup-map вместо индексов; prefer entry with real grammemes over @v-only
+
+### Grammeme Resolution Bug
+- **Причина:** `resolve_grammemes` сопоставлял SQL-результаты с missing-кодами по индексу. Если код отсутствовал в таблице grammemes (напр. `@v`), индексы сдвигались и все граммемы получали чужие имена.
+- **Решение:** строить `HashMap<String, Grammeme>` из SQL-ответа и искать каждый код индивидуально. Отсутствующие коды пропускать.
+- **Доп. фикс:** batch-вывод выбирает первую лемму с реальными граммемами (не пустышку с одним `@v`).
+
+### Raw Conversation Flow (continued)
+
+User: похоже не работает фоновый префетч, давай LogPane
+  → LogPane, логгирование в реальном времени
+
+User: префетч должен быть В ФОНЕ, приоритет — навигация
+  → thread::spawn, poll_prefetch, 50ms паузы
+
+User: батч 2 слова, лог слова через запятую
+  → batch_size=2, log_prefetch_word аккумулирует строку
+
+User: окно лога половина ширины, рамки, кэш-первый
+  → borders на панелях, cache-first уже работает
+
+User: пакетный режим, -f json|txt
+  → batch.rs переписан на dictionary lookup_batch, два формата вывода
+
+User: json компактный, поля word→lemma→features
+  → serde_json::to_string вместо pretty, field order через Map
+
+User: почини баг с @v
+  → resolve_grammemes: lookup-map, не индексы; batch: best entry
+
+User: сохрани историю, запуш
+  → Этот раздел
 ```
