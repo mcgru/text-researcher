@@ -10,51 +10,75 @@ use super::{Action, Panel};
 /// Debug/log panel showing prefetch activity, focusable and scrollable.
 pub struct LogPane {
     messages: Vec<String>,
+    current_line: String,
     scroll: usize,
 }
 
-const MAX_MESSAGES: usize = 100;
+const MAX_MESSAGES: usize = 200;
 const VISIBLE_LINES: usize = 4;
 
 impl LogPane {
     pub fn new() -> Self {
         LogPane {
             messages: Vec::new(),
+            current_line: String::new(),
             scroll: 0,
         }
     }
 
+    /// Flush current line if non-empty, then push a new log message.
     pub fn log(&mut self, msg: &str) {
+        self.flush_line();
         self.messages.push(msg.to_string());
-        self.trim();
+        self.scroll_to_bottom();
     }
 
-    /// Log a prefetched word with found/not-found mark.
+    /// Log a prefetched word — accumulates on current line, comma-separated.
     pub fn log_prefetch_word(&mut self, word: &str, found: bool) {
         let mark = if found { "✔" } else { "✘" };
-        self.messages.push(format!(" {} {}", mark, word));
-        self.trim();
+        if !self.current_line.is_empty() {
+            self.current_line.push_str(", ");
+        }
+        self.current_line.push_str(&format!("{} {}", mark, word));
+
+        // Flush if line gets long
+        if self.current_line.len() > 80 {
+            self.flush_line();
+        }
     }
 
-    fn trim(&mut self) {
+    fn flush_line(&mut self) {
+        if !self.current_line.is_empty() {
+            self.messages.push(std::mem::take(&mut self.current_line));
+            self.scroll_to_bottom();
+        }
+    }
+
+    fn scroll_to_bottom(&mut self) {
         if self.messages.len() > MAX_MESSAGES {
             let excess = self.messages.len() - MAX_MESSAGES;
             self.messages.drain(0..excess);
         }
-        // Auto-scroll to bottom
         self.scroll = self.messages.len().saturating_sub(VISIBLE_LINES);
     }
 }
 
 impl Panel for LogPane {
     fn render(&self, frame: &mut Frame, area: Rect, focused: bool) {
-        let visible_start = self.scroll.min(self.messages.len().saturating_sub(1));
-        let visible_end = (visible_start + VISIBLE_LINES).min(self.messages.len());
+        // Build display lines: completed lines + current_line if any
+        let mut display_lines: Vec<String> = Vec::new();
+        display_lines.extend(self.messages.iter().cloned());
+        if !self.current_line.is_empty() {
+            display_lines.push(self.current_line.clone());
+        }
 
-        let lines: Vec<Line> = if self.messages.is_empty() {
+        let visible_start = self.scroll.min(display_lines.len().saturating_sub(1));
+        let visible_end = (visible_start + VISIBLE_LINES).min(display_lines.len());
+
+        let lines: Vec<Line> = if display_lines.is_empty() {
             vec![Line::from("")]
         } else {
-            self.messages[visible_start..visible_end]
+            display_lines[visible_start..visible_end]
                 .iter()
                 .map(|m| Line::from(m.as_str()))
                 .collect()
@@ -85,7 +109,8 @@ impl Panel for LogPane {
                 self.scroll = 0;
             }
             KeyCode::End | KeyCode::Char('G') => {
-                self.scroll = self.messages.len().saturating_sub(VISIBLE_LINES).max(0);
+                let total = self.messages.len() + if self.current_line.is_empty() { 0 } else { 1 };
+                self.scroll = total.saturating_sub(VISIBLE_LINES).max(0);
             }
             _ => {}
         }

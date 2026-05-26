@@ -117,7 +117,7 @@ impl AppState {
         self.prefetch_log_rx = Some(log_rx);
 
         thread::spawn(move || {
-            let batch_size = 50usize;
+            let batch_size = 2usize;
             let pause = std::time::Duration::from_millis(50);
             let mut results: HashMap<String, Option<Vec<DictEntry>>> = HashMap::new();
 
