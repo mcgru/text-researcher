@@ -34,4 +34,8 @@ pub struct Cli {
     /// Number of words to prefetch ahead/behind cursor (-1 = entire text, default)
     #[arg(long = "prefetch", default_value = "-1")]
     pub prefetch: isize,
+
+    /// Output format: txt (word: props) or json (default: txt)
+    #[arg(short = 'f', long = "format", default_value = "txt")]
+    pub format: String,
 }
