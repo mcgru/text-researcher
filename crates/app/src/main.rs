@@ -28,19 +28,12 @@ fn run_tui(cli: &Cli) -> anyhow::Result<()> {
     tui::app::check_terminal_size()?;
 
     let mut terminal = ratatui::init();
-    let mut app = tui::app::AppState::new();
-
-    // TextPane with file content if provided
     let mut text_pane = tui::panels::TextPane::new();
     if let Some(input) = &cli.input {
-        let content = std::fs::read_to_string(input)?;
-        text_pane.set_text(&content);
+        text_pane.set_text(&std::fs::read_to_string(input)?);
     }
-
     let props_pane = tui::panels::PropsPane::new();
-
-    app.add_panel(Box::new(text_pane));
-    app.add_panel(Box::new(props_pane));
+    let mut app = tui::app::AppState::new(text_pane, props_pane);
 
     let result = app.run(&mut terminal);
     ratatui::restore();

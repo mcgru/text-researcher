@@ -53,10 +53,10 @@ development_status:
   2-1-tui-foundation-panel-trait-and-app-shell: done
   2-2-textpane-text-display-and-navigation: done
   2-3-propspane-word-properties: done
-  2-4-menubar-statusbar-and-shortcuts: backlog
-  2-5-project-save-and-load-trproj-trconf: backlog
-  2-6-session-restore-on-startup: backlog
-  2-7-manual-editing-and-mouse-support: backlog
+  2-4-menubar-statusbar-and-shortcuts: done
+  2-5-project-save-and-load-trproj-trconf: done
+  2-6-session-restore-on-startup: done
+  2-7-manual-editing-and-mouse-support: done
   epic-2-retrospective: optional
 
   epic-3: backlog
