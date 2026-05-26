@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::io;
 
 use log::info;
@@ -5,7 +6,7 @@ use ratatui::crossterm;
 use ratatui::crossterm::event::{self, Event, KeyCode, KeyEventKind, KeyModifiers};
 use ratatui::layout::{Constraint, Direction, Layout};
 use ratatui::{DefaultTerminal, Frame};
-use text_researcher_core::OpenCorporaDict;
+use text_researcher_core::{DictEntry, OpenCorporaDict};
 
 use super::panels::{
     Action, MenuBar, Panel, ProjectFile, PropsPane, ShortcutHandler, StatusBar, TextPane,
@@ -24,6 +25,8 @@ pub struct AppState {
     project_path: Option<String>,
     dirty: bool,
     dict: Option<OpenCorporaDict>,
+    prefetch_cache: HashMap<String, Vec<DictEntry>>,
+    prefetch_count: usize,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -48,30 +51,71 @@ impl AppState {
             project_path: None,
             dirty: false,
             dict: None,
+            prefetch_cache: HashMap::new(),
+            prefetch_count: 2,
         }
     }
 
     pub fn set_dictionary(&mut self, dict: OpenCorporaDict) {
         self.dict = Some(dict);
-        // Trigger initial lookup for the first word
         self.lookup_current_word();
+        self.prefetch_ahead();
+    }
+
+    pub fn set_prefetch_count(&mut self, count: usize) {
+        self.prefetch_count = count;
+    }
+
+    /// Prefetch the next N words ahead of cursor into cache.
+    fn prefetch_ahead(&mut self) {
+        let count = self.prefetch_count;
+        if count == 0 {
+            return;
+        }
+
+        let start = self.text.cursor_word_index() + 1;
+        let words: Vec<String> = (start..start + count)
+            .filter_map(|i| self.text.word_at(i).map(|w| w.to_string()))
+            .collect();
+
+        if words.is_empty() || self.dict.is_none() {
+            return;
+        }
+
+        // Filter out already cached
+        let new_words: Vec<&str> = words.iter()
+            .filter(|w| !self.prefetch_cache.contains_key(*w))
+            .map(|w| w.as_str())
+            .collect();
+
+        if new_words.is_empty() {
+            return;
+        }
+
+        // Spawn background prefetch
+        let dict = self.dict.as_ref().unwrap();
+        // Use lookup_batch for parallel prefetch
+        let results = dict.lookup_batch(&new_words);
+        self.prefetch_cache.extend(results);
     }
 
     /// Look up the current word in the dictionary and update props pane.
     fn lookup_current_word(&mut self) {
         if let Some(word) = self.text.current_word() {
+            let word = word.to_string();
+
+            // Check prefetch cache first
+            if let Some(entry) = self.prefetch_cache.get(&word).and_then(|e| e.first().cloned()) {
+                self.update_props_from_entry(&entry);
+                return;
+            }
+
             if let Some(ref dict) = self.dict {
-                match dict.lookup(word) {
+                match dict.lookup(&word) {
                     Ok(entries) => {
                         if let Some(entry) = entries.first() {
-                            let mut feats = std::collections::HashMap::new();
-                            if let Some(ref pos) = entry.pos {
-                                feats.insert("Часть речи".to_string(), pos.clone());
-                            }
-                            for gram in &entry.grammemes {
-                                feats.insert(gram.name.clone(), gram.alias.clone());
-                            }
-                            self.props.update(&entry.form, &entry.lemma, &feats);
+                            self.prefetch_cache.insert(word, entries.clone());
+                            self.update_props_from_entry(entry);
                             return;
                         }
                     }
@@ -82,6 +126,17 @@ impl AppState {
             }
         }
         self.props.clear();
+    }
+
+    fn update_props_from_entry(&mut self, entry: &DictEntry) {
+        let mut feats = std::collections::HashMap::new();
+        if let Some(ref pos) = entry.pos {
+            feats.insert("Часть речи".to_string(), pos.clone());
+        }
+        for gram in &entry.grammemes {
+            feats.insert(gram.name.clone(), gram.alias.clone());
+        }
+        self.props.update(&entry.form, &entry.lemma, &feats);
     }
 
     pub fn is_running(&self) -> bool { self.running }
@@ -157,6 +212,7 @@ impl AppState {
                     Focus::Text => {
                         self.text.handle_input(key);
                         self.lookup_current_word();
+                        self.prefetch_ahead();
                         Action::None
                     }
                     Focus::Props => self.props.handle_input(key),

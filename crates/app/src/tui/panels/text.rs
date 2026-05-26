@@ -43,6 +43,10 @@ impl TextPane {
         self.words.get(self.cursor_word_index).map(|w| w.word.as_str())
     }
 
+    pub fn word_at(&self, index: usize) -> Option<&str> {
+        self.words.get(index).map(|w| w.word.as_str())
+    }
+
     pub fn cursor_word_index(&self) -> usize {
         self.cursor_word_index
     }

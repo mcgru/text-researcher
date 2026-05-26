@@ -30,4 +30,8 @@ pub struct Cli {
     /// Number of parallel threads (default: all logical CPUs)
     #[arg(short = 'j', long = "jobs")]
     pub jobs: Option<usize>,
+
+    /// Number of words to prefetch ahead of cursor (default: 2)
+    #[arg(long = "prefetch", default_value = "2")]
+    pub prefetch: usize,
 }

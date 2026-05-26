@@ -44,6 +44,7 @@ fn run_tui(cli: &Cli) -> anyhow::Result<()> {
     }
     let props_pane = tui::panels::PropsPane::new();
     let mut app = tui::app::AppState::new(text_pane, props_pane);
+    app.set_prefetch_count(cli.prefetch);
 
     // Load OpenCorpora dictionary if available
     let dict_path = std::env::var("DICT_PATH").unwrap_or_else(|_| ".data/dict.opcorpora.sqlite3.db".into());
