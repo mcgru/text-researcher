@@ -27,7 +27,7 @@ pub struct AppState {
     project_path: Option<String>,
     dirty: bool,
     dict: Option<OpenCorporaDict>,
-    prefetch_cache: HashMap<String, Vec<DictEntry>>,
+    prefetch_cache: HashMap<String, Option<Vec<DictEntry>>>,
     prefetch_count: isize,
 }
 
@@ -125,17 +125,23 @@ impl AppState {
         thread::spawn(move || {
             if let Ok(dict) = text_researcher_core::OpenCorporaDict::open(&path) {
                 let refs: Vec<&str> = words_to_fetch.iter().map(|w| w.as_str()).collect();
-                let results = dict.lookup_batch(&refs);
+                let found = dict.lookup_batch(&refs);
+                // Build complete result: found words + negative cache for unfound
+                let mut results: HashMap<String, Option<Vec<DictEntry>>> = HashMap::new();
+                for word in &words_to_fetch {
+                    if let Some(entries) = found.get(word.as_str()) {
+                        results.insert(word.clone(), Some(entries.clone()));
+                    } else {
+                        results.insert(word.clone(), None);
+                    }
+                }
                 let _ = tx.send(results);
             }
         });
 
-        // Store receiver for later pickup in event loop
-        // For now, do a quick non-blocking check
         if let Ok(results) = rx.try_recv() {
             self.prefetch_cache.extend(results);
         }
-        // Note: remaining results picked up in next event loop iteration via drain_channel
     }
 
     /// Prefetch specific word indices.
@@ -154,8 +160,14 @@ impl AppState {
         }
 
         let dict = self.dict.as_ref().unwrap();
-        let results = dict.lookup_batch(&not_cached);
-        self.prefetch_cache.extend(results);
+        let found = dict.lookup_batch(&not_cached);
+        for word in &not_cached {
+            if let Some(entries) = found.get(*word) {
+                self.prefetch_cache.insert(word.to_string(), Some(entries.clone()));
+            } else {
+                self.prefetch_cache.insert(word.to_string(), None);
+            }
+        }
     }
 
     /// Look up the current word in the dictionary and update props pane.
@@ -164,19 +176,35 @@ impl AppState {
             let word = word.to_string();
 
             // Check prefetch cache first
-            if let Some(entry) = self.prefetch_cache.get(&word).and_then(|e| e.first().cloned()) {
-                self.update_props_from_entry(&entry);
-                return;
+            match self.prefetch_cache.get(&word).cloned() {
+                Some(Some(entries)) => {
+                    if let Some(entry) = entries.first() {
+                        let entry = entry.clone();
+                        self.update_props_from_entry(&entry);
+                        return;
+                    }
+                }
+                Some(None) => {
+                    // Negative cache: word not in dictionary
+                    self.props.clear();
+                    return;
+                }
+                None => {} // Not in cache, query DB
             }
 
             if let Some(ref dict) = self.dict {
                 match dict.lookup(&word) {
                     Ok(entries) => {
-                        if let Some(entry) = entries.first() {
-                            self.prefetch_cache.insert(word, entries.clone());
-                            self.update_props_from_entry(entry);
-                            return;
+                        if entries.is_empty() {
+                            self.prefetch_cache.insert(word, None); // negative cache
+                            self.props.clear();
+                        } else {
+                            self.prefetch_cache.insert(word.clone(), Some(entries.clone()));
+                            if let Some(entry) = entries.first() {
+                                self.update_props_from_entry(entry);
+                            }
                         }
+                        return;
                     }
                     Err(e) => {
                         info!("Dictionary lookup failed: {}", e);
