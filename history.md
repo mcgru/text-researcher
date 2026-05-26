@@ -87,4 +87,67 @@ User: vim полный набор, мышь включить
 
 User: semver, commit per patch, push per minor
   → Зафиксировано
+
+## 2026-05-26 — Dictionary & UI Refinements
+
+### UDPipe 2 Architecture Pivot
+- **Изначально:** FFI через bindgen к C++ libudpipe
+- **Реальность:** UDPipe 2 — Python/TensorFlow библиотека, нет C shared library
+- **Решение:** subprocess-обёртка `udpipe-client` (вместо `udpipe-ffi`), stdin/stdout CoNLL-U
+- **`make deps`:** pip install tensorflow numpy ufal.chu-liu-edmonds
+- Без unsafe, без bindgen
+
+### OpenCorpora Dictionary Integration
+- БД: `.data/dict.opcorpora.sqlite3.db` (SQLite, symlink, read-only)
+- Таблицы: lemmata, forms, grammemes, form_grammemes, lemma_grammemes
+- Запрос: форма слова → лемма → граммемы (часть речи, род, число, падеж...)
+- `DICT_PATH` env var или `.data/dict.opcorpora.sqlite3.db` по умолчанию
+
+### UI Layout Final
+- Меню (верх, 1 строка) → содержание: PropsPane (30% слева) + TextPane (70% справа) → статус (низ, 1 строка)
+- Tab: Menu → Props → Text → Menu
+- PropsPane: слово (жирным) + лемма + часть речи + граммемы (тип : значение)
+- TextPane: перенос слов по ширине панели, подсветка текущего слова
+
+### Dictionary Performance
+- **Parallel lookup:** rayon, `lookup_batch()` — каждый поток своё SQLite-соединение (WAL mode)
+- **`-j N`:** ограничение потоков (default: все логические ядра)
+- **Prefetch:** `--prefetch N` — предвыборка N слов влево + N вправо
+- **`--prefetch -1` (default):** фоновый префетч всего текста через `thread::spawn`
+- **Negative cache:** `HashMap<String, Option<Vec<DictEntry>>>` — `None` = слово не найдено, не повторяем запрос
+- UI мгновенно отзывчив: кеш проверяется первым, потом БД
+
+### Implementation (Stories 1.2–2.7, + extras)
+- Story 1.1: Cargo workspace (0.1.1)
+- Story 1.2: UDPipe client — subprocess, CoNLL-U parser (0.1.3)
+- Story 1.3: Core analyzer — ModelManager, Analyzer, Config (0.1.4)
+- Story 1.4: Batch CLI — clap, JSON output (0.1.5)
+- Epic 2 (7 stories): TUI foundation, panels, menu, save/load, editing (0.2.1–0.2.3)
+- Epic 3 (3 stories): Makefile, Dockerfile, CI/CD (0.3.1)
+- UI layout: 30/70 split, type:value format (0.3.2)
+- Dictionary: OpenCorpora SQLite lookup (0.4.1)
+- Text wrapping + dict lookup fix (0.4.2)
+- Parallel dict: rayon, -j flag (0.4.3)
+- Prefetch: --prefetch, background all-text (0.4.4–0.4.5)
+- Negative cache (0.4.6)
+
+### Raw Conversation Flow (continued)
+
+User: словари, OpenCorpora БД
+  → SQLite модуль, lookup по формам/леммам/граммемам
+
+User: текст враппить, скроллить; слова не находятся
+  → TextPane: перенос по ширине; фикс: lookup_current_word не вызывался (Action::None всегда)
+
+User: параллельный поиск, -j N
+  → rayon, lookup_batch(), per-thread SQLite connections
+
+User: префетч следующих слов, --prefetch
+  → prefetch_cache, prefetch_surrounding(), -1 = весь текст в фоне
+
+User: отрицательный кеш
+  → HashMap<String, Option<Vec<DictEntry>>>, None для не найденных слов
+
+User: история в history.md, закоммить, собрать, запуш
+  → Этот раздел
 ```
