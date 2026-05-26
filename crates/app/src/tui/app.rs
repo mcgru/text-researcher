@@ -5,6 +5,7 @@ use ratatui::crossterm;
 use ratatui::crossterm::event::{self, Event, KeyCode, KeyEventKind, KeyModifiers};
 use ratatui::layout::{Constraint, Direction, Layout};
 use ratatui::{DefaultTerminal, Frame};
+use text_researcher_core::OpenCorporaDict;
 
 use super::panels::{
     Action, MenuBar, Panel, ProjectFile, PropsPane, ShortcutHandler, StatusBar, TextPane,
@@ -22,6 +23,7 @@ pub struct AppState {
     shortcuts: ShortcutHandler,
     project_path: Option<String>,
     dirty: bool,
+    dict: Option<OpenCorporaDict>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -45,7 +47,39 @@ impl AppState {
             shortcuts: ShortcutHandler::new(),
             project_path: None,
             dirty: false,
+            dict: None,
         }
+    }
+
+    pub fn set_dictionary(&mut self, dict: OpenCorporaDict) {
+        self.dict = Some(dict);
+    }
+
+    /// Look up the current word in the dictionary and update props pane.
+    fn lookup_current_word(&mut self) {
+        if let Some(word) = self.text.current_word() {
+            if let Some(ref dict) = self.dict {
+                match dict.lookup(word) {
+                    Ok(entries) => {
+                        if let Some(entry) = entries.first() {
+                            let mut feats = std::collections::HashMap::new();
+                            if let Some(ref pos) = entry.pos {
+                                feats.insert("Часть речи".to_string(), pos.clone());
+                            }
+                            for gram in &entry.grammemes {
+                                feats.insert(gram.name.clone(), gram.alias.clone());
+                            }
+                            self.props.update(&entry.form, &entry.lemma, &feats);
+                            return;
+                        }
+                    }
+                    Err(e) => {
+                        info!("Dictionary lookup failed: {}", e);
+                    }
+                }
+            }
+        }
+        self.props.clear();
     }
 
     pub fn is_running(&self) -> bool { self.running }
@@ -118,7 +152,14 @@ impl AppState {
                 // Panel input
                 let action = match self.focused {
                     Focus::Menu => self.menu.handle_input(key),
-                    Focus::Text => self.text.handle_input(key),
+                    Focus::Text => {
+                        let action = self.text.handle_input(key);
+                        // After text navigation, update dictionary lookup
+                        if action != Action::None {
+                            self.lookup_current_word();
+                        }
+                        action
+                    }
                     Focus::Props => self.props.handle_input(key),
                     Focus::Extra(i) => self.extras[i].handle_input(key),
                 };

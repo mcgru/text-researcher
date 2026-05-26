@@ -3,6 +3,7 @@ mod tui;
 
 use clap::Parser;
 use cli::args::Cli;
+use text_researcher_core::OpenCorporaDict;
 
 fn main() -> anyhow::Result<()> {
     let cli = Cli::parse();
@@ -34,6 +35,18 @@ fn run_tui(cli: &Cli) -> anyhow::Result<()> {
     }
     let props_pane = tui::panels::PropsPane::new();
     let mut app = tui::app::AppState::new(text_pane, props_pane);
+
+    // Load OpenCorpora dictionary if available
+    let dict_path = std::env::var("DICT_PATH").unwrap_or_else(|_| ".data/dict.opcorpora.sqlite3.db".into());
+    match OpenCorporaDict::open(&dict_path) {
+        Ok(dict) => {
+            eprintln!("Dictionary loaded: {}", dict_path);
+            app.set_dictionary(dict);
+        }
+        Err(e) => {
+            eprintln!("Dictionary not available: {} (set DICT_PATH env var)", e);
+        }
+    }
 
     let result = app.run(&mut terminal);
     ratatui::restore();

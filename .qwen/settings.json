@@ -15,7 +15,8 @@
       "Bash(cmake *)",
       "Bash(head *)",
       "Bash(cargo fix *)",
-      "Bash(cargo run *)"
+      "Bash(cargo run *)",
+      "Bash(sqlite3 *)"
     ]
   },
   "$version": 4

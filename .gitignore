@@ -17,3 +17,5 @@ models/*.udpipe
 # OS
 .DS_Store
 Thumbs.db
+
+.data/

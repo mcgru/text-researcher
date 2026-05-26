@@ -12,6 +12,9 @@ pub enum CoreError {
     #[error("config error: {0}")]
     ConfigError(String),
 
+    #[error("dictionary error: {0}")]
+    DictionaryError(String),
+
     #[error("UDPipe error: {0}")]
     Udpipeline(#[from] UdpipelineError),
 }

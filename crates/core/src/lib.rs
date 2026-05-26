@@ -5,10 +5,12 @@
 
 pub mod analyzer;
 pub mod config;
+pub mod dictionary;
 pub mod error;
 pub mod model;
 
 pub use analyzer::Analyzer;
 pub use config::{GlobalConfig, SessionConfig};
+pub use dictionary::{DictEntry, Grammeme, OpenCorporaDict};
 pub use error::CoreError;
 pub use model::ModelManager;

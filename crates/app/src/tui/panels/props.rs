@@ -27,11 +27,11 @@ impl PropsPane {
         }
     }
 
-    /// Update with token data from the analyzer.
-    pub fn update(&mut self, word: &str, lemma: &str, upostag: &str, features: &HashMap<String, String>) {
+    /// Update with dictionary entry data.
+    pub fn update(&mut self, word: &str, lemma: &str, features: &HashMap<String, String>) {
         self.word = word.to_string();
         self.lemma = lemma.to_string();
-        self.upostag = upostag.to_string();
+        self.upostag = features.get("Часть речи").cloned().unwrap_or_default();
         self.features = features.clone();
     }
 
@@ -103,6 +103,7 @@ impl Panel for PropsPane {
 /// Human-readable UPOS tag name.
 fn upostag_human(tag: &str) -> String {
     match tag {
+        // Universal Dependencies
         "NOUN" => "Существительное".into(),
         "VERB" => "Глагол".into(),
         "ADJ" => "Прилагательное".into(),
@@ -114,10 +115,24 @@ fn upostag_human(tag: &str) -> String {
         "PART" => "Частица".into(),
         "INTJ" => "Междометие".into(),
         "NUM" => "Числительное".into(),
+        "NUMR" => "Числительное".into(),
         "PROPN" => "Имя собственное".into(),
         "PUNCT" => "Пунктуация".into(),
         "SYM" => "Символ".into(),
         "X" => "Другое".into(),
+        // OpenCorpora
+        "ADJF" => "Прилагательное (полн.)".into(),
+        "ADJS" => "Прилагательное (кратк.)".into(),
+        "ADVB" => "Наречие".into(),
+        "COMP" => "Компаратив".into(),
+        "PRTF" => "Причастие (полн.)".into(),
+        "PRTS" => "Причастие (кратк.)".into(),
+        "GRND" => "Деепричастие".into(),
+        "INFN" => "Инфинитив".into(),
+        "PRED" => "Предикатив".into(),
+        "PREP" => "Предлог".into(),
+        "PRCL" => "Частица".into(),
+        "NPRO" => "Местоимение-сущ.".into(),
         _ => tag.to_string(),
     }
 }
