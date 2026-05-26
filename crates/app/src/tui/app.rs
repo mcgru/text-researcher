@@ -11,7 +11,7 @@ use ratatui::{DefaultTerminal, Frame};
 use text_researcher_core::{DictEntry, OpenCorporaDict};
 
 use super::panels::{
-    Action, MenuBar, Panel, ProjectFile, PropsPane, ShortcutHandler, StatusBar, TextPane,
+    Action, LogPane, MenuBar, Panel, ProjectFile, PropsPane, ShortcutHandler, StatusBar, TextPane,
     load_project, save_project,
 };
 
@@ -20,6 +20,7 @@ pub struct AppState {
     text: TextPane,
     props: PropsPane,
     status: StatusBar,
+    log: LogPane,
     extras: Vec<Box<dyn Panel>>,
     focused: Focus,
     running: bool,
@@ -46,6 +47,7 @@ impl AppState {
             text: text_pane,
             props: props_pane,
             status: StatusBar::new(),
+            log: LogPane::new(),
             extras: Vec::new(),
             focused: Focus::Text,
             running: false,
@@ -83,8 +85,9 @@ impl AppState {
         let cursor = self.text.cursor_word_index();
 
         let indices: Vec<usize> = if count < 0 {
-            // Entire text — run in background thread
-            self.prefetch_all_background();
+            // Entire text — synchronous batch lookup (rayon-parallel)
+            let all: Vec<usize> = (0..total).collect();
+            self.prefetch_indices(&all);
             return;
         } else {
             let count = count as usize;
@@ -117,6 +120,8 @@ impl AppState {
         if words_to_fetch.is_empty() {
             return;
         }
+
+        self.log.log(&format!("bg prefetch {} words…", words_to_fetch.len()));
 
         let dict = self.dict.as_ref().unwrap();
         let path = dict.path().to_path_buf();
@@ -159,15 +164,21 @@ impl AppState {
             return;
         }
 
+        self.log.log(&format!("prefetch {} words…", not_cached.len()));
+
         let dict = self.dict.as_ref().unwrap();
         let found = dict.lookup_batch(&not_cached);
         for word in &not_cached {
             if let Some(entries) = found.get(*word) {
                 self.prefetch_cache.insert(word.to_string(), Some(entries.clone()));
+                self.log.log_prefetch_done(word, true);
             } else {
                 self.prefetch_cache.insert(word.to_string(), None);
+                self.log.log_prefetch_done(word, false);
             }
         }
+
+        self.log.log("prefetch done");
     }
 
     /// Look up the current word in the dictionary and update props pane.
@@ -241,7 +252,12 @@ impl AppState {
     fn render(&self, frame: &mut Frame) {
         let chunks = Layout::default()
             .direction(Direction::Vertical)
-            .constraints([Constraint::Length(1), Constraint::Min(1), Constraint::Length(1)])
+            .constraints([
+                Constraint::Length(1),  // menu
+                Constraint::Min(1),     // main area
+                Constraint::Length(6),  // log
+                Constraint::Length(1),  // status
+            ])
             .split(frame.area());
 
         // Menu
@@ -264,7 +280,10 @@ impl AppState {
         }
 
         // Status
-        self.status.render(frame, chunks[2], false);
+        self.status.render(frame, chunks[3], false);
+
+        // Log
+        self.log.render(frame, chunks[2], false);
     }
 
     fn handle_events(&mut self) -> io::Result<()> {

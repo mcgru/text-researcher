@@ -1,3 +1,4 @@
+pub mod log;
 pub mod menu;
 pub mod props;
 pub mod text;
@@ -10,6 +11,7 @@ use ratatui::layout::Rect;
 use ratatui::Frame;
 use serde::{Deserialize, Serialize};
 
+pub use log::LogPane;
 pub use menu::{MenuBar, ShortcutHandler, StatusBar};
 pub use props::PropsPane;
 pub use text::TextPane;
