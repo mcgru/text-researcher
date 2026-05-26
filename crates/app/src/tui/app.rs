@@ -53,6 +53,8 @@ impl AppState {
 
     pub fn set_dictionary(&mut self, dict: OpenCorporaDict) {
         self.dict = Some(dict);
+        // Trigger initial lookup for the first word
+        self.lookup_current_word();
     }
 
     /// Look up the current word in the dictionary and update props pane.
@@ -153,12 +155,9 @@ impl AppState {
                 let action = match self.focused {
                     Focus::Menu => self.menu.handle_input(key),
                     Focus::Text => {
-                        let action = self.text.handle_input(key);
-                        // After text navigation, update dictionary lookup
-                        if action != Action::None {
-                            self.lookup_current_word();
-                        }
-                        action
+                        self.text.handle_input(key);
+                        self.lookup_current_word();
+                        Action::None
                     }
                     Focus::Props => self.props.handle_input(key),
                     Focus::Extra(i) => self.extras[i].handle_input(key),

@@ -2,7 +2,7 @@ use ratatui::crossterm::event::{KeyCode, KeyEvent};
 use ratatui::layout::Rect;
 use ratatui::style::{Color, Style};
 use ratatui::text::{Line, Span};
-use ratatui::widgets::Paragraph;
+use ratatui::widgets::{Paragraph, Wrap};
 use ratatui::Frame;
 
 use super::{Action, Panel};
@@ -47,74 +47,107 @@ impl TextPane {
         self.cursor_word_index
     }
 
-    fn move_cursor(&mut self, delta: isize) {
+    fn move_cursor(&mut self, delta: isize) -> bool {
         let new = self.cursor_word_index as isize + delta;
         if new >= 0 && (new as usize) < self.words.len() {
             self.cursor_word_index = new as usize;
+            true
+        } else {
+            false
         }
     }
 
-    fn move_to_line(&mut self, delta: isize) {
-        // Approximate: move roughly one visual line's worth of words
-        let line_width = 20; // rough estimate
+    fn move_to_line(&mut self, delta: isize) -> bool {
+        let line_width = 20;
         let new = self.cursor_word_index as isize + delta * line_width;
         if new >= 0 && (new as usize) < self.words.len() {
             self.cursor_word_index = new as usize;
+            true
         } else if new < 0 {
             self.cursor_word_index = 0;
+            true
         } else {
             self.cursor_word_index = self.words.len().saturating_sub(1);
+            true
         }
     }
 
-    fn goto_start(&mut self) {
+    fn goto_start(&mut self) -> bool {
         self.cursor_word_index = 0;
+        true
     }
 
-    fn goto_end(&mut self) {
+    fn goto_end(&mut self) -> bool {
         if !self.words.is_empty() {
             self.cursor_word_index = self.words.len() - 1;
         }
+        true
     }
 }
 
 impl Panel for TextPane {
-    fn render(&self, frame: &mut Frame, area: Rect, focused: bool) {
-        let highlight_style = if focused {
-            Style::default().bg(Color::DarkGray).fg(Color::White)
-        } else {
-            Style::default().bg(Color::Gray)
-        };
+    fn render(&self, frame: &mut Frame, area: Rect, _focused: bool) {
+        let highlight_style = Style::default().bg(Color::DarkGray).fg(Color::White);
 
-        let mut spans: Vec<Span> = Vec::new();
-        for (i, ws) in self.words.iter().enumerate() {
-            if i == self.cursor_word_index {
-                spans.push(Span::styled(&ws.word, highlight_style));
-            } else {
-                spans.push(Span::raw(&ws.word));
-            }
-            spans.push(Span::raw(" "));
+        let area_width = area.width as usize;
+        if area_width < 3 {
+            return;
         }
 
-        let line = Line::from(spans);
-        frame.render_widget(Paragraph::new(line), area);
+        // Build lines wrapping at area width
+        let mut lines: Vec<Line> = Vec::new();
+        let mut current_line: Vec<Span> = Vec::new();
+        let mut current_width = 0usize;
+        let mut word_idx = 0usize;
+
+        for ws in &self.words {
+            let word_width = ws.word.chars().count();
+            let space_width = if current_width > 0 { 1 } else { 0 };
+
+            if current_width + space_width + word_width > area_width && current_width > 0 {
+                // Wrap to new line
+                lines.push(Line::from(std::mem::take(&mut current_line)));
+                current_width = 0;
+            }
+
+            if current_width > 0 {
+                current_line.push(Span::raw(" "));
+                current_width += 1;
+            }
+
+            let span = if word_idx == self.cursor_word_index {
+                Span::styled(&ws.word, highlight_style)
+            } else {
+                Span::raw(&ws.word)
+            };
+            current_line.push(span);
+            current_width += word_width;
+            word_idx += 1;
+        }
+
+        if !current_line.is_empty() {
+            lines.push(Line::from(current_line));
+        }
+
+        let paragraph = Paragraph::new(lines);
+        frame.render_widget(paragraph, area);
     }
 
     fn handle_input(&mut self, key: KeyEvent) -> Action {
-        match key.code {
+        let _moved = match key.code {
             KeyCode::Right | KeyCode::Char('l') => self.move_cursor(1),
             KeyCode::Left | KeyCode::Char('h') => self.move_cursor(-1),
             KeyCode::Down | KeyCode::Char('j') => self.move_to_line(1),
             KeyCode::Up | KeyCode::Char('k') => self.move_to_line(-1),
-            KeyCode::Char('w') => self.move_cursor(1),   // next word
-            KeyCode::Char('b') => self.move_cursor(-1),  // prev word
-            KeyCode::Char('e') => { /* end of word: fine for now */ }
+            KeyCode::Char('w') => self.move_cursor(1),
+            KeyCode::Char('b') => self.move_cursor(-1),
+            KeyCode::Char('e') => true,
             KeyCode::Char('0') => self.goto_start(),
             KeyCode::Char('$') => self.goto_end(),
-            KeyCode::Char('g') => self.goto_start(), // simplified gg
+            KeyCode::Char('g') => self.goto_start(),
             KeyCode::Char('G') => self.goto_end(),
-            _ => {}
-        }
+            _ => false,
+        };
         Action::None
     }
 

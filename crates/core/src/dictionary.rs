@@ -44,6 +44,7 @@ impl OpenCorporaDict {
     /// Look up all entries for a word form.
     pub fn lookup(&self, word: &str) -> Result<Vec<DictEntry>, CoreError> {
         let word_lower = word.to_lowercase();
+        let word_clean = word_lower.trim_matches(|c: char| !c.is_alphanumeric() && c != '-');
 
         // Find matching forms
         let mut stmt = self.conn.prepare(
@@ -55,7 +56,7 @@ impl OpenCorporaDict {
         ).map_err(|e| CoreError::DictionaryError(format!("prepare failed: {}", e)))?;
 
         let rows: Vec<(i64, String, i64, String)> = stmt
-            .query_map([&word_lower], |row| {
+            .query_map([&word_clean], |row| {
                 Ok((row.get(0)?, row.get(1)?, row.get(2)?, row.get(3)?))
             })
             .map_err(|e| CoreError::DictionaryError(format!("query failed: {}", e)))?
