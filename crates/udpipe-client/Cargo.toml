@@ -1,11 +1,10 @@
 [package]
-name = "udpipe-ffi"
+name = "udpipe-client"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
 
 [dependencies]
+serde = { version = "1", features = ["derive"] }
 thiserror = "1"
-
-[build-dependencies]
-bindgen = "0.70"
+log = "0.4"

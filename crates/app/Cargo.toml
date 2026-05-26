@@ -10,7 +10,7 @@ path = "src/main.rs"
 
 [dependencies]
 text-researcher-core = { path = "../core" }
-udpipe-ffi = { path = "../udpipe-ffi" }
+udpipe-client = { path = "../udpipe-client" }
 ratatui = "0.30"
 crossterm = "0.29"
 clap = { version = "4.6", features = ["derive"] }

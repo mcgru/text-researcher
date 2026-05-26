@@ -1,7 +1,12 @@
 # Story 1.1: Cargo workspace и структура крейтов
 
-Status: review
+Status: done
 baseline_commit: 3ec4562bd434356dbae645d24354090fab7b9e7d
+
+### Review Findings
+
+- [x] [Review][Patch] crossterm 0.28 → 0.29 to match ratatui dependency [crates/app/Cargo.toml:14]
+- [x] [Review][Patch] Cargo.lock removed from .gitignore (binary crate) [.gitignore:2]
 
 ## Story
 
