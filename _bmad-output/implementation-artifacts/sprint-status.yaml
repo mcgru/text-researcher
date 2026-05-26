@@ -1,0 +1,66 @@
+# generated: 2026-05-26
+# last_updated: 2026-05-26
+# project: text-researcher
+# project_key: NOKEY
+# tracking_system: file-system
+# story_location: {implementation_artifacts}
+
+# STATUS DEFINITIONS:
+# ==================
+# Epic Status:
+#   - backlog: Epic not yet started
+#   - in-progress: Epic actively being worked on
+#   - done: All stories in epic completed
+#
+# Epic Status Transitions:
+#   - backlog → in-progress: Automatically when first story is created (via create-story)
+#   - in-progress → done: Manually when all stories reach 'done' status
+#
+# Story Status:
+#   - backlog: Story only exists in epic file
+#   - ready-for-dev: Story file created in stories folder
+#   - in-progress: Developer actively working on implementation
+#   - review: Ready for code review (via Dev's code-review workflow)
+#   - done: Story completed
+#
+# Retrospective Status:
+#   - optional: Can be completed but not required
+#   - done: Retrospective has been completed
+#
+# WORKFLOW NOTES:
+# ===============
+# - Epic transitions to 'in-progress' automatically when first story is created
+# - Stories can be worked in parallel if team capacity allows
+# - Developer typically creates next story after previous one is 'done' to incorporate learnings
+# - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
+
+generated: 2026-05-26
+last_updated: 2026-05-26
+project: text-researcher
+project_key: NOKEY
+tracking_system: file-system
+story_location: _bmad-output/implementation-artifacts
+
+development_status:
+  epic-1: in-progress
+  1-1-cargo-workspace-and-crate-structure: ready-for-dev
+  1-2-ffi-bindings-to-libudpipe: backlog
+  1-3-core-analyzer-modelmanager-and-analyzer: backlog
+  1-4-batch-cli-args-config-and-json-output: backlog
+  epic-1-retrospective: optional
+
+  epic-2: backlog
+  2-1-tui-foundation-panel-trait-and-app-shell: backlog
+  2-2-textpane-text-display-and-navigation: backlog
+  2-3-propspane-word-properties: backlog
+  2-4-menubar-statusbar-and-shortcuts: backlog
+  2-5-project-save-and-load-trproj-trconf: backlog
+  2-6-session-restore-on-startup: backlog
+  2-7-manual-editing-and-mouse-support: backlog
+  epic-2-retrospective: optional
+
+  epic-3: backlog
+  3-1-makefile-build-test-lint: backlog
+  3-2-docker-multi-stage-image-with-models: backlog
+  3-3-cicd-github-actions: backlog
+  epic-3-retrospective: optional

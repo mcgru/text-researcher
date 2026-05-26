@@ -1,0 +1,25 @@
+# Rust build artifacts
+target/
+
+# Git
+.git/
+.gitignore
+
+# IDE
+.idea/
+.vscode/
+
+# Project files (not needed in image)
+*.trproj
+*.trconf
+
+# Documentation (not needed at runtime)
+docs/
+*.md
+!models/README.md
+
+# CI/CD (not needed at runtime)
+.github/
+
+# macOS
+.DS_Store

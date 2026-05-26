@@ -1,0 +1,20 @@
+# Rust
+target/
+Cargo.lock
+
+# Project files
+*.trproj
+*.trconf
+
+# UDPipe models (large binary files)
+models/*.udpipe
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
