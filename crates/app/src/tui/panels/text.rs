@@ -165,23 +165,31 @@ impl Panel for TextPane {
     }
 }
 
-/// Parse text into words, tracking byte offsets.
+/// Parse text into words, cleaning punctuation/quotes, tracking byte offsets.
 fn parse_words(text: &str) -> Vec<WordSpan> {
     let mut words = Vec::new();
     let mut byte_pos = 0;
 
-    for word in text.split_whitespace() {
-        if let Some(pos) = text[byte_pos..].find(word) {
+    for token in text.split_whitespace() {
+        if let Some(pos) = text[byte_pos..].find(token) {
             let start = byte_pos + pos;
-            let end = start + word.len();
-            words.push(WordSpan {
-                word: word.to_string(),
-                start_byte: start,
-                end_byte: end,
-            });
+            let end = start + token.len();
+            let cleaned = clean_word(token);
+            if !cleaned.is_empty() {
+                words.push(WordSpan {
+                    word: cleaned,
+                    start_byte: start,
+                    end_byte: end,
+                });
+            }
             byte_pos = end;
         }
     }
 
     words
+}
+
+/// Strip punctuation, quotes, and non-letter/digit/hyphen characters from word edges.
+fn clean_word(word: &str) -> String {
+    word.trim_matches(|c: char| !c.is_alphanumeric() && c != '-').to_string()
 }

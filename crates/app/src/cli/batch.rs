@@ -22,18 +22,21 @@ pub fn run_batch(cli: &Cli) -> anyhow::Result<()> {
     let dict = OpenCorporaDict::open(&dict_path)
         .map_err(|e| anyhow::anyhow!("failed to open dictionary: {}", e))?;
 
-    // Extract words
-    let words: Vec<&str> = text.split_whitespace().collect();
+    // Extract words and clean punctuation
+    let words: Vec<String> = text.split_whitespace()
+        .map(|w| w.trim_matches(|c: char| !c.is_alphanumeric() && c != '-').to_string())
+        .filter(|w| !w.is_empty())
+        .collect();
+    let word_refs: Vec<&str> = words.iter().map(|w| w.as_str()).collect();
 
     // Parallel lookup
-    let results = dict.lookup_batch(&words);
+    let results = dict.lookup_batch(&word_refs);
 
     // Build output
     let output: String = match cli.format.as_str() {
         "json" => {
             let entries: Vec<String> = words.iter().map(|word| {
-                let word_clean = word.trim_matches(|c: char| !c.is_alphanumeric() && c != '-');
-                if let Some(entry_list) = results.get(*word) {
+                if let Some(entry_list) = results.get(word.as_str()) {
                     // Pick the first entry with actual grammemes (skip virtual-only lemmas)
                     let best = entry_list.iter().find(|e| {
                         !e.grammemes.is_empty() || e.pos.is_some()
@@ -50,13 +53,13 @@ pub fn run_batch(cli: &Cli) -> anyhow::Result<()> {
                         let features_str = serde_json::to_string(&feats).unwrap_or_else(|_| "{}".into());
                         format!(
                             r#"{{"word":"{}","lemma":"{}","features":{}}}"#,
-                            *word, e.lemma, features_str
+                            word, e.lemma, features_str
                         )
                     } else {
-                        format!(r#"{{"word":"{}","lemma":"{}","features":{{}}}}"#, *word, word_clean)
+                        format!(r#"{{"word":"{}","lemma":"{}","features":{{}}}}"#, word, word)
                     }
                 } else {
-                    format!(r#"{{"word":"{}","lemma":"{}","features":{{}}}}"#, *word, word_clean)
+                    format!(r#"{{"word":"{}","lemma":"{}","features":{{}}}}"#, word, word)
                 }
             }).collect();
             entries.join("\n")
@@ -64,7 +67,7 @@ pub fn run_batch(cli: &Cli) -> anyhow::Result<()> {
         _ => {
             // Text format: word: PROP=val, PROP=val, ...
             let lines: Vec<String> = words.iter().map(|word| {
-                if let Some(entry_list) = results.get(*word) {
+                if let Some(entry_list) = results.get(word.as_str()) {
                     if let Some(entry) = entry_list.first() {
                         let mut props = Vec::new();
                         props.push(format!("lemma={}", entry.lemma));
