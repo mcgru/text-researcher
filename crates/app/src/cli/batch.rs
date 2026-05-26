@@ -34,7 +34,12 @@ pub fn run_batch(cli: &Cli) -> anyhow::Result<()> {
             let entries: Vec<String> = words.iter().map(|word| {
                 let word_clean = word.trim_matches(|c: char| !c.is_alphanumeric() && c != '-');
                 let entry = if let Some(entry_list) = results.get(*word) {
-                    if let Some(e) = entry_list.first() {
+                    // Pick the first entry with actual grammemes (skip virtual-only lemmas)
+                    let best = entry_list.iter().find(|e| {
+                        !e.grammemes.is_empty() || e.pos.is_some()
+                    }).or_else(|| entry_list.first());
+
+                    if let Some(e) = best {
                         let mut feats = serde_json::Map::new();
                         if let Some(ref pos) = e.pos {
                             feats.insert("pos".into(), pos.clone().into());

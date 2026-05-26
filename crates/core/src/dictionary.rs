@@ -198,23 +198,39 @@ impl OpenCorporaDict {
                 .map(|s| s as &dyn rusqlite::types::ToSql)
                 .collect();
 
-            let resolved: Vec<Grammeme> = stmt
+            let resolved: Vec<(String, Grammeme)> = stmt
                 .query_map(params.as_slice(), |row| {
-                    Ok(Grammeme {
-                        code: String::new(), // filled below
-                        name: row.get::<_, String>(2).unwrap_or_default(),
-                        alias: row.get::<_, String>(1).unwrap_or_default(),
-                    })
+                    Ok((
+                        row.get::<_, String>(0)?,
+                        Grammeme {
+                            code: String::new(), // filled below
+                            name: row.get::<_, String>(2).unwrap_or_default(),
+                            alias: row.get::<_, String>(1).unwrap_or_default(),
+                        },
+                    ))
                 })
                 .map_err(|e| CoreError::DictionaryError(format!("grammeme query failed: {}", e)))?
                 .filter_map(|r| r.ok())
                 .collect();
 
-            for (i, gram) in resolved.into_iter().enumerate() {
-                let code = missing[i].to_string();
-                let g = Grammeme { code: code.clone(), name: gram.name, alias: gram.alias };
-                cache.insert(code, g.clone());
-                result.push(g);
+            // Build lookup map: code → (name, alias)
+            let mut lookup: std::collections::HashMap<String, Grammeme> = std::collections::HashMap::new();
+            for (code, gram) in resolved {
+                lookup.insert(code, gram);
+            }
+
+            // Match each missing code to its resolved grammeme
+            for code in &missing {
+                if let Some(gram) = lookup.get(*code) {
+                    let g = Grammeme {
+                        code: (*code).to_string(),
+                        name: gram.name.clone(),
+                        alias: gram.alias.clone(),
+                    };
+                    cache.insert((*code).to_string(), g.clone());
+                    result.push(g);
+                }
+                // Codes not found (e.g. "@v") are silently skipped
             }
         }
 
