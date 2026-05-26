@@ -31,27 +31,31 @@ pub fn run_batch(cli: &Cli) -> anyhow::Result<()> {
     // Build output
     let output: String = match cli.format.as_str() {
         "json" => {
-            let entries: Vec<serde_json::Value> = words.iter().map(|word| {
+            let entries: Vec<String> = words.iter().map(|word| {
                 let word_clean = word.trim_matches(|c: char| !c.is_alphanumeric() && c != '-');
-                if let Some(entry_list) = results.get(*word) {
-                    if let Some(entry) = entry_list.first() {
+                let entry = if let Some(entry_list) = results.get(*word) {
+                    if let Some(e) = entry_list.first() {
                         let mut feats = serde_json::Map::new();
-                        if let Some(ref pos) = entry.pos {
+                        if let Some(ref pos) = e.pos {
                             feats.insert("pos".into(), pos.clone().into());
                         }
-                        for gram in &entry.grammemes {
+                        for gram in &e.grammemes {
                             feats.insert(gram.name.clone(), gram.alias.clone().into());
                         }
-                        return serde_json::json!({
+                        serde_json::json!({
                             "word": word,
-                            "lemma": entry.lemma,
+                            "lemma": e.lemma,
                             "features": feats
-                        });
+                        })
+                    } else {
+                        serde_json::json!({ "word": word, "lemma": word_clean, "features": {} })
                     }
-                }
-                serde_json::json!({ "word": word, "lemma": word_clean, "features": {} })
+                } else {
+                    serde_json::json!({ "word": word, "lemma": word_clean, "features": {} })
+                };
+                serde_json::to_string(&entry).unwrap_or_default()
             }).collect();
-            serde_json::to_string_pretty(&entries)?
+            entries.join("\n")
         }
         _ => {
             // Text format: word: PROP=val, PROP=val, ...
