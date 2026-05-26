@@ -59,8 +59,8 @@ development_status:
   2-7-manual-editing-and-mouse-support: done
   epic-2-retrospective: optional
 
-  epic-3: backlog
-  3-1-makefile-build-test-lint: backlog
-  3-2-docker-multi-stage-image-with-models: backlog
-  3-3-cicd-github-actions: backlog
+  epic-3: in-progress
+  3-1-makefile-build-test-lint: done
+  3-2-docker-multi-stage-image-with-models: done
+  3-3-cicd-github-actions: done
   epic-3-retrospective: optional
