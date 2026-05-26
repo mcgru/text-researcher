@@ -2,7 +2,7 @@ use ratatui::crossterm::event::KeyEvent;
 use ratatui::layout::Rect;
 use ratatui::style::{Color, Style};
 use ratatui::text::Line;
-use ratatui::widgets::Paragraph;
+use ratatui::widgets::{Block, Borders, Paragraph};
 use ratatui::Frame;
 
 use super::{Action, Panel};
@@ -90,7 +90,10 @@ impl Panel for LogPane {
             Style::default().fg(Color::Gray).bg(Color::Black)
         };
 
-        frame.render_widget(Paragraph::new(lines).style(style), area);
+        frame.render_widget(
+            Paragraph::new(lines).style(style).block(Block::default().borders(Borders::ALL).title(" Log ")),
+            area,
+        );
     }
 
     fn handle_input(&mut self, key: KeyEvent) -> Action {

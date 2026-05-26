@@ -2,7 +2,7 @@ use ratatui::crossterm::event::{KeyCode, KeyEvent};
 use ratatui::layout::Rect;
 use ratatui::style::{Color, Style};
 use ratatui::text::{Line, Span};
-use ratatui::widgets::{Paragraph, Wrap};
+use ratatui::widgets::{Block, Borders, Paragraph, Wrap};
 use ratatui::Frame;
 
 use super::{Action, Panel};
@@ -137,7 +137,8 @@ impl Panel for TextPane {
             lines.push(Line::from(current_line));
         }
 
-        let paragraph = Paragraph::new(lines);
+        let paragraph = Paragraph::new(lines)
+            .block(Block::default().borders(Borders::ALL).title(" Text "));
         frame.render_widget(paragraph, area);
     }
 
