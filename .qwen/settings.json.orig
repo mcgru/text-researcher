@@ -12,7 +12,8 @@
       "Bash(dpkg *)",
       "Bash(ldconfig *)",
       "Bash(git clone *)",
-      "Bash(cmake *)"
+      "Bash(cmake *)",
+      "Bash(head *)"
     ]
   },
   "$version": 4
