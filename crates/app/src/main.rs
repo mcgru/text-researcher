@@ -3,7 +3,7 @@ mod tui;
 
 use clap::Parser;
 use cli::args::Cli;
-use text_researcher_core::{DictConfig, open_backend};
+use text_researcher_core::{DictConfig, GlobalConfig, open_backend};
 
 fn main() -> anyhow::Result<()> {
     let cli = Cli::parse();
@@ -23,6 +23,10 @@ fn main() -> anyhow::Result<()> {
 
     if let Some(language) = &cli.download_model {
         return cli::batch::run_download_model(language);
+    }
+
+    if cli.init {
+        return run_init();
     }
 
     if cli.interactive {
@@ -63,5 +67,58 @@ fn run_tui(cli: &Cli) -> anyhow::Result<()> {
     ratatui::restore();
     ratatui::crossterm::execute!(std::io::stdout(), ratatui::crossterm::event::DisableMouseCapture)?;
     result?;
+    Ok(())
+}
+
+fn run_init() -> anyhow::Result<()> {
+    let config_dir = dirs::config_dir()
+        .unwrap_or_else(|| std::path::PathBuf::from("."))
+        .join("text-researcher");
+    let config_path = config_dir.join("config.json");
+
+    if config_path.exists() {
+        // Backup with timestamp suffix
+        let now = chrono::Local::now();
+        let backup = config_dir.join(format!(
+            "config.json.{}",
+            now.format("%Y%m%d-%H%M%S")
+        ));
+        std::fs::copy(&config_path, &backup)
+            .map_err(|e| anyhow::anyhow!("failed to backup config: {}", e))?;
+        eprintln!("Existing config backed up to {}", backup.display());
+    } else {
+        std::fs::create_dir_all(&config_dir)
+            .map_err(|e| anyhow::anyhow!("failed to create config dir: {}", e))?;
+    }
+
+    let default_config = GlobalConfig::default();
+    let json = serde_json::to_string_pretty(&default_config)?;
+
+    // Build documented config with comments
+    let documented = format!(
+        r#"// text-researcher global configuration
+// Location: {}
+//
+// Fields:
+//   default_language    — default language for analysis (e.g., "ru", "en")
+//   model_dir           — directory with UDPipe .udpipe model files
+//   log_level           — logging level: "error", "warn", "info", "debug", "trace"
+//   batch_chunk_size    — words per batch chunk for progressive output (default: 10)
+//
+// Dictionary backend is configured via:
+//   DICT_BACKEND env   — "sqlite" (default) or "postgres"
+//   DICT_PATH env      — path to SQLite database
+//   DATABASE_URL env   — PostgreSQL connection string
+//   or in config.json: {{ "dictionary": {{ "backend": "sqlite", ... }} }}
+{}
+"#,
+        config_path.display(),
+        json
+    );
+
+    std::fs::write(&config_path, &documented)
+        .map_err(|e| anyhow::anyhow!("failed to write config: {}", e))?;
+    eprintln!("Config written to {}", config_path.display());
+
     Ok(())
 }

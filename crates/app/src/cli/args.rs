@@ -4,7 +4,7 @@ use std::path::PathBuf;
 #[command(name = "text-researcher", version, about = "Linguistic text analysis tool")]
 pub struct Cli {
     /// Input text file (batch mode, default)
-    #[arg(required_unless_present = "interactive")]
+    #[arg(required_unless_present_any = ["interactive", "init"])]
     pub input: Option<PathBuf>,
 
     /// Language code (default: from config, or "ru")
@@ -38,4 +38,8 @@ pub struct Cli {
     /// Output format: txt (word: props) or json (default: txt)
     #[arg(short = 'f', long = "format", default_value = "txt")]
     pub format: String,
+
+    /// Initialize global config file with defaults
+    #[arg(long = "init")]
+    pub init: bool,
 }
