@@ -247,6 +247,11 @@ impl AppState {
             .map(|g| (g.name.clone(), g.alias.clone(), g.code.clone()))
             .collect();
         self.props.update(form, lemma, &pos, features);
+
+        // Build compact feature line
+        let codes: Vec<String> = grammemes.iter().map(|g| g.code.clone()).collect();
+        let compact = text_researcher_core::morphology::compact_features(lemma, &pos, &codes);
+        self.props.set_compact_line(&compact);
     }
 
     pub fn is_running(&self) -> bool { self.running }

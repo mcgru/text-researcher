@@ -20,6 +20,7 @@ pub struct PropsPane {
     lemma: String,
     upostag: String,
     features: Vec<(String, String, String)>, // (name_ru, alias_ru, code_en)
+    compact_line: String,                     // @lem:..., @case:..., @gen:...
 }
 
 impl PropsPane {
@@ -29,6 +30,7 @@ impl PropsPane {
             lemma: String::new(),
             upostag: String::new(),
             features: Vec::new(),
+            compact_line: String::new(),
         }
     }
 
@@ -41,12 +43,18 @@ impl PropsPane {
         self.features = features;
     }
 
+    /// Set the compact feature line (@lem:..., @case:..., ...).
+    pub fn set_compact_line(&mut self, line: &str) {
+        self.compact_line = line.to_string();
+    }
+
     /// Clear props (no word selected).
     pub fn clear(&mut self) {
         self.word.clear();
         self.lemma.clear();
         self.upostag.clear();
         self.features.clear();
+        self.compact_line.clear();
     }
 }
 
@@ -85,6 +93,14 @@ impl Panel for PropsPane {
                     Span::styled(format!("{} : ", name), Style::default().fg(Color::Yellow)),
                     Span::raw(alias),
                     Span::styled(format!(", {}", code), Style::default().fg(Color::DarkGray)),
+                ]));
+            }
+
+            // Separator + compact feature line
+            if !self.compact_line.is_empty() {
+                lines.push(Line::from("─".repeat(area.width as usize)));
+                lines.push(Line::from(vec![
+                    Span::styled(&self.compact_line, Style::default().fg(Color::DarkGray)),
                 ]));
             }
         }

@@ -1,0 +1,203 @@
+{
+  "morphological_features": [
+    {
+      "name_en": "Animacy",
+      "short_en": "anim",
+      "alt_en": ["anim", "animacy"],
+      "short_ru": "одуш",
+      "medium_ru": "одуш",
+      "description_ru": "одушевлённость / неодушевлённость",
+      "possible_values": ["Anim", "Inan", "Hum", "Nhum"]
+    },
+    {
+      "name_en": "Aspect",
+      "short_en": "asp",
+      "alt_en": ["asp", "aspect"],
+      "short_ru": "вид",
+      "medium_ru": "вид",
+      "description_ru": "вид глагола",
+      "possible_values": ["Imp", "Perf", "Hab", "Iter", "Prog", "Prosp"]
+    },
+    {
+      "name_en": "Case",
+      "short_en": "case",
+      "alt_en": ["case", "cas"],
+      "short_ru": "пад",
+      "medium_ru": "падеж",
+      "description_ru": "падеж",
+      "possible_values": ["Nom", "Gen", "Dat", "Acc", "Voc", "Loc", "Ins", "Par", "Dis"]
+    },
+    {
+      "name_en": "Definite",
+      "short_en": "def",
+      "alt_en": ["def", "definite"],
+      "short_ru": "опр",
+      "medium_ru": "опред",
+      "description_ru": "определённость / неопределённость",
+      "possible_values": ["Ind", "Def", "Spec"]
+    },
+    {
+      "name_en": "Degree",
+      "short_en": "deg",
+      "alt_en": ["deg", "degree"],
+      "short_ru": "степ",
+      "medium_ru": "степень",
+      "description_ru": "степень сравнения",
+      "possible_values": ["Pos", "Cmp", "Sup", "Equ", "Abs"]
+    },
+    {
+      "name_en": "Evidentiality",
+      "short_en": "evid",
+      "alt_en": ["evid", "evidentiality"],
+      "short_ru": "свид",
+      "medium_ru": "свид",
+      "description_ru": "эвиденциальность (способ получения информации)",
+      "possible_values": ["Fh", "Nfh", "Direct", "Indirect", "Report", "Infer"]
+    },
+    {
+      "name_en": "Foreign",
+      "short_en": "foreign",
+      "alt_en": ["foreign", "foreignword"],
+      "short_ru": "ино",
+      "medium_ru": "иностр",
+      "description_ru": "иноязычное слово",
+      "possible_values": ["Yes"]
+    },
+    {
+      "name_en": "Gender",
+      "short_en": "gender",
+      "alt_en": ["gender", "gen", "gnd"],
+      "short_ru": "род",
+      "medium_ru": "род",
+      "description_ru": "род",
+      "possible_values": ["Masc", "Fem", "Neut", "Com"]
+    },
+    {
+      "name_en": "Gender[psor]",
+      "short_en": "gender[psor]",
+      "alt_en": ["gender[psor]", "g_psor", "gend_psor"],
+      "short_ru": "род_пос",
+      "medium_ru": "род_пос",
+      "description_ru": "род обладателя (в притяжательных формах)",
+      "possible_values": ["Masc", "Fem", "Neut"]
+    },
+    {
+      "name_en": "Mood",
+      "short_en": "mood",
+      "alt_en": ["mood", "mod"],
+      "short_ru": "накл",
+      "medium_ru": "накл",
+      "description_ru": "наклонение",
+      "possible_values": ["Ind", "Imp", "Cnd", "Sub", "Jus", "Pot", "Opt"]
+    },
+    {
+      "name_en": "Number",
+      "short_en": "num",
+      "alt_en": ["num", "number", "nr"],
+      "short_ru": "чис",
+      "medium_ru": "число",
+      "description_ru": "число",
+      "possible_values": ["Sing", "Plur", "Dual", "Ptan", "Coll"]
+    },
+    {
+      "name_en": "Number[psor]",
+      "short_en": "num[psor]",
+      "alt_en": ["num[psor]", "num_psor", "n_psor"],
+      "short_ru": "чис_пос",
+      "medium_ru": "число_пос",
+      "description_ru": "число обладателя (в притяжательных формах)",
+      "possible_values": ["Sing", "Plur"]
+    },
+    {
+      "name_en": "NumType",
+      "short_en": "numtype",
+      "alt_en": ["numtype", "num_type"],
+      "short_ru": "тип_числ",
+      "medium_ru": "тип_числ",
+      "description_ru": "тип числительного",
+      "possible_values": ["Card", "Ord", "Mult", "Frac", "Sets", "Dist", "Range"]
+    },
+    {
+      "name_en": "Person",
+      "short_en": "pers",
+      "alt_en": ["pers", "person", "ps"],
+      "short_ru": "лицо",
+      "medium_ru": "лицо",
+      "description_ru": "лицо",
+      "possible_values": ["1", "2", "3"]
+    },
+    {
+      "name_en": "Polarity",
+      "short_en": "pol",
+      "alt_en": ["pol", "polarity", "neg"],
+      "short_ru": "отриц",
+      "medium_ru": "отриц",
+      "description_ru": "отрицание / утверждение",
+      "possible_values": ["Neg", "Pos"]
+    },
+    {
+      "name_en": "Politeness",
+      "short_en": "polite",
+      "alt_en": ["polite", "politeness"],
+      "short_ru": "вежл",
+      "medium_ru": "вежл",
+      "description_ru": "политесность (степень вежливости)",
+      "possible_values": ["Infm", "Form", "Elev", "Humb"]
+    },
+    {
+      "name_en": "Poss",
+      "short_en": "poss",
+      "alt_en": ["poss", "possessive"],
+      "short_ru": "прит",
+      "medium_ru": "прит",
+      "description_ru": "притяжательность (посессивность)",
+      "possible_values": ["Yes"]
+    },
+    {
+      "name_en": "PronType",
+      "short_en": "prontype",
+      "alt_en": ["prontype", "pron_type"],
+      "short_ru": "тип_мест",
+      "medium_ru": "тип_мест",
+      "description_ru": "тип местоимения",
+      "possible_values": ["Prs", "Rcp", "Int", "Rel", "Dem", "Emp", "Tot", "Ind", "Neg"]
+    },
+    {
+      "name_en": "Reflex",
+      "short_en": "reflex",
+      "alt_en": ["reflex", "refl"],
+      "short_ru": "возвр",
+      "medium_ru": "возвр",
+      "description_ru": "возвратность",
+      "possible_values": ["Yes"]
+    },
+    {
+      "name_en": "Tense",
+      "short_en": "tense",
+      "alt_en": ["tense", "tns"],
+      "short_ru": "вр",
+      "medium_ru": "время",
+      "description_ru": "время",
+      "possible_values": ["Past", "Pres", "Fut", "Pqp", "Imp"]
+    },
+    {
+      "name_en": "VerbForm",
+      "short_en": "verbform",
+      "alt_en": ["verbform", "vform", "vbf"],
+      "short_ru": "форма_гл",
+      "medium_ru": "форма_гл",
+      "description_ru": "форма глагола",
+      "possible_values": ["Fin", "Inf", "Part", "Conv", "Ger", "Vnoun", "Sup"]
+    },
+    {
+      "name_en": "Voice",
+      "short_en": "voice",
+      "alt_en": ["voice", "vo"],
+      "short_ru": "залог",
+      "medium_ru": "залог",
+      "description_ru": "залог",
+      "possible_values": ["Act", "Pass", "Mid", "Cau"]
+    }
+  ]
+}
+
