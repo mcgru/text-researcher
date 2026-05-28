@@ -5,6 +5,7 @@ use std::path::PathBuf;
 pub const DEFAULT_LANGUAGE: &str = "ru";
 pub const DEFAULT_MODEL_DIR: &str = "./models";
 pub const DEFAULT_LOG_LEVEL: &str = "info";
+pub const DEFAULT_CHUNK_SIZE: usize = 10;
 
 /// Global configuration from `~/.config/text-researcher/config.json`.
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -15,11 +16,14 @@ pub struct GlobalConfig {
     pub model_dir: String,
     #[serde(default = "default_log_level")]
     pub log_level: String,
+    #[serde(default = "default_chunk_size")]
+    pub batch_chunk_size: usize,
 }
 
 fn default_language() -> String { DEFAULT_LANGUAGE.into() }
 fn default_model_dir() -> String { DEFAULT_MODEL_DIR.into() }
 fn default_log_level() -> String { DEFAULT_LOG_LEVEL.into() }
+fn default_chunk_size() -> usize { DEFAULT_CHUNK_SIZE }
 
 impl Default for GlobalConfig {
     fn default() -> Self {
@@ -27,6 +31,7 @@ impl Default for GlobalConfig {
             default_language: DEFAULT_LANGUAGE.into(),
             model_dir: DEFAULT_MODEL_DIR.into(),
             log_level: DEFAULT_LOG_LEVEL.into(),
+            batch_chunk_size: DEFAULT_CHUNK_SIZE,
         }
     }
 }

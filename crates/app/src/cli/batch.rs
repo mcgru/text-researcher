@@ -7,14 +7,14 @@ use text_researcher_core::morphology::compact_features;
 
 use crate::cli::args::Cli;
 
-const CHUNK_SIZE: usize = 100;
+const DEFAULT_CHUNK_SIZE: usize = 10;
 
 /// Run batch analysis: lookup all words in dictionary, output txt or json.
 pub fn run_batch(cli: &Cli) -> anyhow::Result<()> {
     let input_path = cli.input.as_ref().expect("input file required for batch mode");
 
     // Load config
-    let _config = GlobalConfig::load()?;
+    let config = GlobalConfig::load()?;
 
     // Read input file
     let text = fs::read_to_string(input_path)
@@ -42,8 +42,10 @@ pub fn run_batch(cli: &Cli) -> anyhow::Result<()> {
 
     let is_json = cli.format == "json";
 
+    let chunk_size = config.batch_chunk_size.max(1);
+
     // Process in chunks
-    for chunk in words.chunks(CHUNK_SIZE) {
+    for chunk in words.chunks(chunk_size) {
         let refs: Vec<&str> = chunk.iter().map(|w| w.as_str()).collect();
         let results = dict.lookup_batch(&refs);
 
