@@ -110,32 +110,26 @@ fn run_init() -> anyhow::Result<()> {
     let config_dir = dirs::config_dir()
         .unwrap_or_else(|| std::path::PathBuf::from("."))
         .join("text-researcher");
-    let config_path = config_dir.join("config.json");
-    let doc_path = config_dir.join("config.json.txt");
+    std::fs::create_dir_all(&config_dir)?;
 
-    if config_path.exists() {
-        let now = chrono::Local::now();
-        let ts = now.format("%Y%m%d-%H%M%S");
-        let backup = config_dir.join(format!("config.json.{}", ts));
-        std::fs::copy(&config_path, &backup)?;
-        eprintln!("Backup: {}", backup.display());
+    let now = chrono::Local::now();
+    let ts = now.format("%Y%m%d-%H%M%S");
 
-        let doc_backup = config_dir.join(format!("config.json.txt.{}", ts));
-        if doc_path.exists() {
-            std::fs::copy(&doc_path, &doc_backup)?;
-        }
+    let config_path = if config_dir.join("config.json").exists() {
+        config_dir.join(format!("config.json.{}", ts))
     } else {
-        std::fs::create_dir_all(&config_dir)?;
-    }
+        config_dir.join("config.json")
+    };
+    let doc_path = config_dir.join(format!("config.json.txt.{}", ts));
 
     let default_config = GlobalConfig::default();
     let json = serde_json::to_string_pretty(&default_config)?;
 
-    // Write clean config.json
+    // Write clean config
     std::fs::write(&config_path, &json)?;
     eprintln!("Config: {}", config_path.display());
 
-    // Write documented config.json.txt
+    // Write documentation
     let doc = format!(
         "text-researcher global configuration\n\
          Location: {config}\n\
