@@ -85,7 +85,6 @@ impl DictConfig {
     pub fn from_env_or_default() -> Self {
         let config = crate::GlobalConfig::load().unwrap_or_default();
         let backend = std::env::var("DICT_BACKEND").unwrap_or_else(|_| {
-            // Auto-detect: if both paths are set, use "both"
             if !config.dict_path.is_empty() && !config.postgres_url.is_empty() {
                 "both".into()
             } else if !config.postgres_url.is_empty() {
@@ -96,12 +95,26 @@ impl DictConfig {
         });
         DictConfig {
             backend,
-            sqlite_path: std::env::var("DICT_PATH")
-                .unwrap_or(config.dict_path),
+            sqlite_path: expand_tilde(
+                &std::env::var("DICT_PATH").unwrap_or(config.dict_path)
+            ),
             postgres_url: std::env::var("DATABASE_URL")
                 .unwrap_or(config.postgres_url),
         }
     }
+}
+
+/// Expand `~/` and `$HOME/` in a path.
+fn expand_tilde(path: &str) -> String {
+    if let Ok(home) = std::env::var("HOME") {
+        if path.starts_with("~/") {
+            return path.replacen("~", &home, 1);
+        }
+        if path.starts_with("$HOME/") {
+            return path.replacen("$HOME", &home, 1);
+        }
+    }
+    path.to_string()
 }
 
 /// Open a dictionary backend from configuration.
