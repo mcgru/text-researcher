@@ -6,6 +6,8 @@ pub const DEFAULT_LANGUAGE: &str = "ru";
 pub const DEFAULT_MODEL_DIR: &str = "./models";
 pub const DEFAULT_LOG_LEVEL: &str = "info";
 pub const DEFAULT_CHUNK_SIZE: usize = 10;
+pub const DEFAULT_DICT_PATH: &str = ".data/dict.opcorpora.sqlite3.db";
+pub const DEFAULT_PG_URL: &str = "";
 
 /// Global configuration from `~/.config/text-researcher/config.json`.
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -18,12 +20,18 @@ pub struct GlobalConfig {
     pub log_level: String,
     #[serde(default = "default_chunk_size")]
     pub batch_chunk_size: usize,
+    #[serde(default = "default_dict_path")]
+    pub dict_path: String,
+    #[serde(default = "default_pg_url")]
+    pub postgres_url_off: String,
 }
 
 fn default_language() -> String { DEFAULT_LANGUAGE.into() }
 fn default_model_dir() -> String { DEFAULT_MODEL_DIR.into() }
 fn default_log_level() -> String { DEFAULT_LOG_LEVEL.into() }
 fn default_chunk_size() -> usize { DEFAULT_CHUNK_SIZE }
+fn default_dict_path() -> String { DEFAULT_DICT_PATH.into() }
+fn default_pg_url() -> String { DEFAULT_PG_URL.into() }
 
 impl Default for GlobalConfig {
     fn default() -> Self {
@@ -32,6 +40,8 @@ impl Default for GlobalConfig {
             model_dir: DEFAULT_MODEL_DIR.into(),
             log_level: DEFAULT_LOG_LEVEL.into(),
             batch_chunk_size: DEFAULT_CHUNK_SIZE,
+            dict_path: DEFAULT_DICT_PATH.into(),
+            postgres_url_off: DEFAULT_PG_URL.into(),
         }
     }
 }

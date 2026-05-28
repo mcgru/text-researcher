@@ -139,11 +139,13 @@ fn run_init() -> anyhow::Result<()> {
            model_dir            - directory with UDPipe .udpipe model files\n\
            log_level            - logging: \"error\", \"warn\", \"info\", \"debug\", \"trace\"\n\
            batch_chunk_size     - words per batch chunk (default: 10)\n\
+           dict_path            - path to SQLite dictionary .db file\n\
+           postgres_url_off     - PostgreSQL URL (empty = disabled, set for pg backend)\n\
          \n\
-         Dictionary backend (env vars or config.json dictionary section):\n\
-           DICT_BACKEND  - \"sqlite\" (default) or \"postgres\"\n\
-           DICT_PATH     - path to SQLite .db file\n\
-           DATABASE_URL  - PostgreSQL connection string\n\
+         Dictionary backend selection:\n\
+           DICT_BACKEND env  - \"sqlite\" (default) or \"postgres\"\n\
+           DICT_PATH   env   - overrides dict_path from config\n\
+           DATABASE_URL env  - overrides postgres_url_off from config\n\
          \n\
          Example config.json:\n\
 {json}",
