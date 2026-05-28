@@ -365,11 +365,10 @@ impl AppState {
 
     fn cycle_focus(&mut self) {
         self.focused = match self.focused {
-            Focus::Menu => Focus::Props,
-            Focus::Props => Focus::Text,
-            Focus::Text => Focus::Log,
-            Focus::Log => Focus::Menu,
-            Focus::Extra(_) => Focus::Menu,
+            Focus::Menu => Focus::Text,
+            Focus::Text => Focus::Props,
+            Focus::Props => Focus::Menu,
+            _ => Focus::Text,
         };
         self.status.update("", 1, self.text.cursor_word_index(), "RU", self.dirty);
     }
@@ -394,7 +393,11 @@ impl AppState {
         let compact = self.props.compact_line().to_string();
         if !compact.is_empty() {
             if let Ok(mut clipboard) = arboard::Clipboard::new() {
-                let _ = clipboard.set_text(&compact);
+                if clipboard.set_text(&compact).is_ok() {
+                    // Keep clipboard alive briefly so data persists
+                    std::thread::sleep(std::time::Duration::from_millis(10));
+                    drop(clipboard);
+                }
             }
         }
     }

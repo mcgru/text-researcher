@@ -125,6 +125,6 @@ impl Panel for LogPane {
     }
 
     fn focusable(&self) -> bool {
-        true
+        false
     }
 }

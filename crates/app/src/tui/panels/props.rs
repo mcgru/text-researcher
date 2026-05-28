@@ -126,7 +126,10 @@ impl Panel for PropsPane {
         if matches!(key.code, KeyCode::Char('c') | KeyCode::Char('с') | KeyCode::Char('C') | KeyCode::Char('С')) {
             if !self.compact_line.is_empty() {
                 if let Ok(mut clipboard) = arboard::Clipboard::new() {
-                    let _ = clipboard.set_text(&self.compact_line);
+                    if clipboard.set_text(&self.compact_line).is_ok() {
+                        std::thread::sleep(std::time::Duration::from_millis(10));
+                        drop(clipboard);
+                    }
                 }
             }
         }
