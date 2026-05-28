@@ -1,4 +1,4 @@
-use ratatui::crossterm::event::{KeyCode, KeyEvent};
+use ratatui::crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 use ratatui::layout::Rect;
 use ratatui::style::{Color, Style};
 use ratatui::text::{Line, Span};
@@ -115,7 +115,15 @@ impl Panel for PropsPane {
 
     fn handle_input(&mut self, key: KeyEvent) -> Action {
         if key.code == KeyCode::Char('e') {
-            return Action::EditWord { word_index: 0 }; // word_index filled by app
+            return Action::EditWord { word_index: 0 };
+        }
+        // Ctrl+C: copy compact feature line to clipboard
+        if key.code == KeyCode::Char('c') && key.modifiers.contains(KeyModifiers::CONTROL) {
+            if !self.compact_line.is_empty() {
+                if let Ok(mut clipboard) = arboard::Clipboard::new() {
+                    let _ = clipboard.set_text(&self.compact_line);
+                }
+            }
         }
         Action::None
     }
