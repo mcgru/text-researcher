@@ -8,6 +8,7 @@ pub mod config;
 pub mod dictionary;
 pub mod error;
 pub mod model;
+pub mod morphology;
 
 pub use analyzer::Analyzer;
 pub use config::{GlobalConfig, SessionConfig};

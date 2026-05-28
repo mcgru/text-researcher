@@ -200,8 +200,9 @@ impl AppState {
                         let form = entry.form.clone();
                         let lemma = entry.lemma.clone();
                         let pos = entry.pos.clone();
-                        let grammemes: Vec<_> = entry.grammemes.iter().map(|g| (g.name.clone(), g.alias.clone())).collect();
-                        self.update_props_from_parts(&form, &lemma, &pos, &grammemes);
+                        let grammemes: Vec<_> = entry.grammemes.iter().map(|g| g.clone()).collect();
+                        drop(entries);
+                        self.update_props_from_grammemes(&form, &lemma, &pos, &grammemes);
                         return;
                     }
                 }
@@ -237,20 +238,15 @@ impl AppState {
     }
 
     fn update_props_from_entry(&mut self, entry: &DictEntry) {
-        let pos = entry.pos.clone();
-        let grammemes: Vec<_> = entry.grammemes.iter().map(|g| (g.name.clone(), g.alias.clone())).collect();
-        self.update_props_from_parts(&entry.form, &entry.lemma, &pos, &grammemes);
+        self.update_props_from_grammemes(&entry.form, &entry.lemma, &entry.pos, &entry.grammemes);
     }
 
-    fn update_props_from_parts(&mut self, form: &str, lemma: &str, pos: &Option<String>, grammemes: &[(String, String)]) {
-        let mut feats = HashMap::new();
-        if let Some(ref p) = pos {
-            feats.insert("Часть речи".to_string(), p.clone());
-        }
-        for (name, alias) in grammemes {
-            feats.insert(name.clone(), alias.clone());
-        }
-        self.props.update(form, lemma, &feats);
+    fn update_props_from_grammemes(&mut self, form: &str, lemma: &str, pos: &Option<String>, grammemes: &[text_researcher_core::Grammeme]) {
+        let pos = pos.clone().unwrap_or_default();
+        let features: Vec<(String, String, String)> = grammemes.iter()
+            .map(|g| (g.name.clone(), g.alias.clone(), g.code.clone()))
+            .collect();
+        self.props.update(form, lemma, &pos, features);
     }
 
     pub fn is_running(&self) -> bool { self.running }

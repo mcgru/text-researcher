@@ -1,5 +1,3 @@
-use std::collections::HashMap;
-
 use ratatui::crossterm::event::{KeyCode, KeyEvent};
 use ratatui::layout::Rect;
 use ratatui::style::{Color, Style};
@@ -10,11 +8,18 @@ use ratatui::Frame;
 use super::{Action, Panel};
 
 /// Displays morphological properties of the word under cursor.
+///
+/// Properties are displayed as: "name : alias, code" where:
+/// - `name` — Russian full name (e.g., "единственное число")
+/// - `alias` — Russian abbreviation (e.g., "ед")
+/// - `code` — English code from UD/OpenCorpora (e.g., "sing")
+///
+/// Reference: `docs/morph-features.json`, `docs/table-morph-types.json`
 pub struct PropsPane {
     word: String,
     lemma: String,
     upostag: String,
-    features: HashMap<String, String>,
+    features: Vec<(String, String, String)>, // (name_ru, alias_ru, code_en)
 }
 
 impl PropsPane {
@@ -23,16 +28,17 @@ impl PropsPane {
             word: String::new(),
             lemma: String::new(),
             upostag: String::new(),
-            features: HashMap::new(),
+            features: Vec::new(),
         }
     }
 
     /// Update with dictionary entry data.
-    pub fn update(&mut self, word: &str, lemma: &str, features: &HashMap<String, String>) {
+    /// `features`: Vec of (name_ru, alias_ru, code_en)
+    pub fn update(&mut self, word: &str, lemma: &str, pos: &str, features: Vec<(String, String, String)>) {
         self.word = word.to_string();
         self.lemma = lemma.to_string();
-        self.upostag = features.get("Часть речи").cloned().unwrap_or_default();
-        self.features = features.clone();
+        self.upostag = pos.to_string();
+        self.features = features;
     }
 
     /// Clear props (no word selected).
@@ -73,15 +79,12 @@ impl Panel for PropsPane {
             ]));
 
             // Features
-            let mut feats: Vec<&String> = self.features.keys().collect();
-            feats.sort();
-            for key in feats {
-                if let Some(value) = self.features.get(key) {
-                    lines.push(Line::from(vec![
-                        Span::styled(format!("{} : ", key), Style::default().fg(Color::Yellow)),
-                        Span::raw(value),
-                    ]));
-                }
+            for (name, alias, code) in &self.features {
+                lines.push(Line::from(vec![
+                    Span::styled(format!("{} : ", name), Style::default().fg(Color::Yellow)),
+                    Span::raw(alias),
+                    Span::styled(format!(", {}", code), Style::default().fg(Color::DarkGray)),
+                ]));
             }
         }
 
