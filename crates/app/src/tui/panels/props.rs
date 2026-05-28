@@ -4,7 +4,7 @@ use ratatui::crossterm::event::{KeyCode, KeyEvent};
 use ratatui::layout::Rect;
 use ratatui::style::{Color, Style};
 use ratatui::text::{Line, Span};
-use ratatui::widgets::{Block, Borders, Paragraph};
+use ratatui::widgets::{Block, Borders, Paragraph, Wrap};
 use ratatui::Frame;
 
 use super::{Action, Panel};
@@ -86,7 +86,9 @@ impl Panel for PropsPane {
         }
 
         frame.render_widget(
-            Paragraph::new(lines).block(Block::default().borders(Borders::ALL).title(" Properties ")),
+            Paragraph::new(lines)
+                .wrap(Wrap { trim: false })
+                .block(Block::default().borders(Borders::ALL).title(" Properties ")),
             area,
         );
     }
