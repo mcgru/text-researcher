@@ -27,6 +27,46 @@ pub trait DictBackend: Send + Sync {
     fn lookup_batch(&self, words: &[&str]) -> HashMap<String, Vec<DictEntry>>;
 }
 
+/// A backend that queries both SQLite and PostgreSQL in parallel.
+pub struct MultiBackend {
+    sqlite: Option<sqlite::SqliteBackend>,
+    postgres: Option<postgres::PostgresBackend>,
+}
+
+impl DictBackend for MultiBackend {
+    fn lookup(&self, word: &str) -> Result<Vec<DictEntry>, CoreError> {
+        let mut results = Vec::new();
+        if let Some(ref be) = self.sqlite {
+            if let Ok(entries) = be.lookup(word) {
+                results.extend(entries);
+            }
+        }
+        if let Some(ref be) = self.postgres {
+            if let Ok(entries) = be.lookup(word) {
+                results.extend(entries);
+            }
+        }
+        Ok(results)
+    }
+
+    fn lookup_batch(&self, words: &[&str]) -> HashMap<String, Vec<DictEntry>> {
+        let mut combined = HashMap::new();
+        if let Some(ref be) = self.sqlite {
+            let found = be.lookup_batch(words);
+            for (k, v) in found {
+                combined.entry(k).or_insert_with(Vec::new).extend(v);
+            }
+        }
+        if let Some(ref be) = self.postgres {
+            let found = be.lookup_batch(words);
+            for (k, v) in found {
+                combined.entry(k).or_insert_with(Vec::new).extend(v);
+            }
+        }
+        combined
+    }
+}
+
 /// Dictionary configuration from config.json.
 #[derive(Debug, Clone, serde::Deserialize, serde::Serialize, Default)]
 pub struct DictConfig {
@@ -43,12 +83,23 @@ fn default_sqlite_path() -> String { ".data/dict.opcorpora.sqlite3.db".into() }
 
 impl DictConfig {
     pub fn from_env_or_default() -> Self {
-        let backend = std::env::var("DICT_BACKEND").unwrap_or_else(|_| "sqlite".into());
+        let config = crate::GlobalConfig::load().unwrap_or_default();
+        let backend = std::env::var("DICT_BACKEND").unwrap_or_else(|_| {
+            // Auto-detect: if both paths are set, use "both"
+            if !config.dict_path.is_empty() && !config.postgres_url.is_empty() {
+                "both".into()
+            } else if !config.postgres_url.is_empty() {
+                "postgres".into()
+            } else {
+                "sqlite".into()
+            }
+        });
         DictConfig {
-            backend: backend.clone(),
+            backend,
             sqlite_path: std::env::var("DICT_PATH")
-                .unwrap_or_else(|_| default_sqlite_path()),
-            postgres_url: std::env::var("DATABASE_URL").unwrap_or_default(),
+                .unwrap_or(config.dict_path),
+            postgres_url: std::env::var("DATABASE_URL")
+                .unwrap_or(config.postgres_url),
         }
     }
 }
@@ -64,8 +115,17 @@ pub fn open_backend(config: &DictConfig) -> Result<Box<dyn DictBackend>, CoreErr
             let backend = postgres::PostgresBackend::open(&config.postgres_url)?;
             Ok(Box::new(backend))
         }
+        "both" => {
+            let sql = if !config.sqlite_path.is_empty() {
+                Some(sqlite::SqliteBackend::open(&config.sqlite_path)?)
+            } else { None };
+            let pg = if !config.postgres_url.is_empty() {
+                Some(postgres::PostgresBackend::open(&config.postgres_url)?)
+            } else { None };
+            Ok(Box::new(MultiBackend { sqlite: sql, postgres: pg }))
+        }
         other => Err(CoreError::ConfigError(format!(
-            "unknown dictionary backend: '{}'. Use 'sqlite' or 'postgres'",
+            "unknown dictionary backend: '{}'. Use 'sqlite', 'postgres', or 'both'",
             other
         ))),
     }

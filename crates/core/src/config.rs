@@ -23,7 +23,7 @@ pub struct GlobalConfig {
     #[serde(default = "default_dict_path")]
     pub dict_path: String,
     #[serde(default = "default_pg_url")]
-    pub postgres_url_off: String,
+    pub postgres_url: String,
 }
 
 fn default_language() -> String { DEFAULT_LANGUAGE.into() }
@@ -41,7 +41,7 @@ impl Default for GlobalConfig {
             log_level: DEFAULT_LOG_LEVEL.into(),
             batch_chunk_size: DEFAULT_CHUNK_SIZE,
             dict_path: DEFAULT_DICT_PATH.into(),
-            postgres_url_off: DEFAULT_PG_URL.into(),
+            postgres_url: DEFAULT_PG_URL.into(),
         }
     }
 }

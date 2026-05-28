@@ -140,12 +140,12 @@ fn run_init() -> anyhow::Result<()> {
            log_level            - logging: \"error\", \"warn\", \"info\", \"debug\", \"trace\"\n\
            batch_chunk_size     - words per batch chunk (default: 10)\n\
            dict_path            - path to SQLite dictionary .db file\n\
-           postgres_url_off     - PostgreSQL URL (empty = disabled, set for pg backend)\n\
+           postgres_url         - PostgreSQL URL (empty = disabled)\n\
          \n\
          Dictionary backend selection:\n\
-           DICT_BACKEND env  - \"sqlite\" (default) or \"postgres\"\n\
+           DICT_BACKEND env  - \"sqlite\", \"postgres\", or \"both\" (auto if both paths set)\n\
            DICT_PATH   env   - overrides dict_path from config\n\
-           DATABASE_URL env  - overrides postgres_url_off from config\n\
+           DATABASE_URL env  - overrides postgres_url from config\n\
          \n\
          Example config.json:\n\
 {json}",
