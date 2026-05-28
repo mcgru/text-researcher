@@ -76,6 +76,7 @@ impl Panel for PropsPane {
             lines.push(Line::from(vec![
                 Span::styled("Часть речи : ", Style::default().fg(Color::Cyan)),
                 Span::raw(upostag_human(&self.upostag)),
+                Span::styled(format!(", {}", &self.upostag), Style::default().fg(Color::DarkGray)),
             ]));
 
             // Features
