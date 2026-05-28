@@ -4,6 +4,7 @@ mod tui;
 use clap::Parser;
 use cli::args::Cli;
 use text_researcher_core::{DictConfig, GlobalConfig, open_backend};
+use text_researcher_core::morphology;
 
 fn main() -> anyhow::Result<()> {
     let cli = Cli::parse();
@@ -27,6 +28,10 @@ fn main() -> anyhow::Result<()> {
 
     if cli.init {
         return run_init();
+    }
+
+    if cli.help_features {
+        return run_help_features();
     }
 
     if cli.interactive {
@@ -67,6 +72,37 @@ fn run_tui(cli: &Cli) -> anyhow::Result<()> {
     ratatui::restore();
     ratatui::crossterm::execute!(std::io::stdout(), ratatui::crossterm::event::DisableMouseCapture)?;
     result?;
+    Ok(())
+}
+
+fn run_help_features() -> anyhow::Result<()> {
+    println!("\nMorphological Features Reference");
+    println!("===============================\n");
+    println!("{:<6} {:<14} {:<16} {:<10} {}", "Short", "Name (EN)", "Short RU", "Med RU", "Description");
+    println!("{:-<6} {:-<14} {:-<16} {:-<10} {:-<50}", "", "", "", "", "");
+    for f in morphology::FEATURES {
+        println!(
+            "{:<6} {:<14} {:<16} {:<10} {}",
+            f.short_en, f.name_en, f.short_ru, f.medium_ru, ""
+        );
+        println!(
+            "{:<6} {:<14} {:<16} {:<10}   Values: {}",
+            "", "", "", "", f.possible_values.join(", ")
+        );
+    }
+
+    println!("\n\nParts of Speech Reference");
+    println!("=========================\n");
+    println!("{:<6} {:<10} {:<16} {}", "Code", "Short RU", "Med RU", "Description");
+    println!("{:-<6} {:-<10} {:-<16} {:-<50}", "", "", "", "");
+    for p in morphology::POS_TYPES {
+        println!(
+            "{:<6} {:<10} {:<16} {}",
+            p.code, p.short_ru, p.medium_ru, p.description_ru
+        );
+    }
+    println!();
+
     Ok(())
 }
 

@@ -4,7 +4,7 @@ use std::path::PathBuf;
 #[command(name = "text-researcher", version, about = "Linguistic text analysis tool")]
 pub struct Cli {
     /// Input text file (batch mode, default)
-    #[arg(required_unless_present_any = ["interactive", "init"])]
+    #[arg(required_unless_present_any = ["interactive", "init", "help_features"])]
     pub input: Option<PathBuf>,
 
     /// Language code (default: from config, or "ru")
@@ -42,4 +42,8 @@ pub struct Cli {
     /// Initialize global config file with defaults
     #[arg(long = "init")]
     pub init: bool,
+
+    /// Show morphology features reference table
+    #[arg(long = "help-features")]
+    pub help_features: bool,
 }
