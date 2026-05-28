@@ -269,4 +269,26 @@ User: config chunk size, --init, --help-features
 
 User: сохрани историю, закоммить, собери, запуш
   → Этот раздел
+
+## 2026-05-28 — Config & Dual-Backend
+
+### Config Refinements
+- **0.7.8:** history.md updated
+- **0.7.9:** config: dict_path + postgres_url fields
+- **0.7.10:** MultiBackend (both), auto-detect dual mode when both paths set
+- **0.7.11:** expand ~/ and /home/john/ in dict_path
+
+### Raw Conversation Flow (continued)
+
+User: пропиши dict_path и postgres_url в конфиге
+  → 0.7.9
+
+User: без _off, если оба заданы — параллельный поиск
+  → 0.7.10: MultiBackend, auto-detect "both"
+
+User: раскрывай ~/ и /home/john/ в пути
+  → 0.7.11: expand_tilde()
+
+User: сохрани историю, закоммить, собери, запуш
+  → Этот раздел
 ```
