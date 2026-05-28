@@ -2,6 +2,7 @@ use std::fs;
 use std::path::Path;
 
 use text_researcher_core::{DictConfig, GlobalConfig, open_backend};
+use text_researcher_core::morphology::compact_features;
 
 use crate::cli::args::Cli;
 
@@ -35,51 +36,16 @@ pub fn run_batch(cli: &Cli) -> anyhow::Result<()> {
     let output: String = match cli.format.as_str() {
         "json" => {
             let entries: Vec<String> = words.iter().map(|word| {
-                if let Some(entry_list) = results.get(word.as_str()) {
-                    // Pick the first entry with actual grammemes (skip virtual-only lemmas)
-                    let best = entry_list.iter().find(|e| {
-                        !e.grammemes.is_empty() || e.pos.is_some()
-                    }).or_else(|| entry_list.first());
-
-                    if let Some(e) = best {
-                        let mut feats = serde_json::Map::new();
-                        if let Some(ref pos) = e.pos {
-                            feats.insert("pos".into(), pos.clone().into());
-                        }
-                        for gram in &e.grammemes {
-                            feats.insert(gram.name.clone(), gram.alias.clone().into());
-                        }
-                        let features_str = serde_json::to_string(&feats).unwrap_or_else(|_| "{}".into());
-                        format!(
-                            r#"{{"word":"{}","lemma":"{}","features":{}}}"#,
-                            word, e.lemma, features_str
-                        )
-                    } else {
-                        format!(r#"{{"word":"{}","lemma":"{}","features":{{}}}}"#, word, word)
-                    }
-                } else {
-                    format!(r#"{{"word":"{}","lemma":"{}","features":{{}}}}"#, word, word)
-                }
+                let props_str = build_compact(word, &results);
+                format!(r#"{{"word":"{}","props":"{}"}}"#, word, props_str)
             }).collect();
             entries.join("\n")
         }
         _ => {
-            // Text format: word: PROP=val, PROP=val, ...
+            // Text format: word\t@lem:..., @pos:...
             let lines: Vec<String> = words.iter().map(|word| {
-                if let Some(entry_list) = results.get(word.as_str()) {
-                    if let Some(entry) = entry_list.first() {
-                        let mut props = Vec::new();
-                        props.push(format!("lemma={}", entry.lemma));
-                        if let Some(ref pos) = entry.pos {
-                            props.push(format!("POS={}", pos));
-                        }
-                        for gram in &entry.grammemes {
-                            props.push(format!("{}={}", gram.name, gram.alias));
-                        }
-                        return format!("{}: {}", word, props.join(", "));
-                    }
-                }
-                format!("{}: (не найдено)", word)
+                let props_str = build_compact(word, &results);
+                format!("{}\t{}", word, props_str)
             }).collect();
             lines.join("\n")
         }
@@ -95,6 +61,20 @@ pub fn run_batch(cli: &Cli) -> anyhow::Result<()> {
     }
 
     Ok(())
+}
+
+/// Build compact feature string for a word from lookup results.
+fn build_compact(word: &str, results: &std::collections::HashMap<String, Vec<text_researcher_core::DictEntry>>) -> String {
+    if let Some(entry_list) = results.get(word) {
+        let best = entry_list.iter().find(|e| !e.grammemes.is_empty() || e.pos.is_some())
+            .or_else(|| entry_list.first());
+        if let Some(e) = best {
+            let codes: Vec<String> = e.grammemes.iter().map(|g| g.code.clone()).collect();
+            let pos = e.pos.clone().unwrap_or_default();
+            return compact_features(&e.lemma, &pos, &codes);
+        }
+    }
+    String::new()
 }
 
 /// Download a UDPipe model for the given language (stub).
