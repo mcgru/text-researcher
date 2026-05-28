@@ -88,7 +88,7 @@ pub fn compact_features(lemma: &str, pos: &str, grammeme_codes: &[String]) -> St
 }
 
 /// Find the feature short name for a grammeme value (e.g., "sing" → "num").
-fn feature_for_value(value: &str) -> &str {
+pub fn feature_for_value(value: &str) -> &str {
     for feat in FEATURES {
         for &pv in feat.possible_values {
             if pv.to_lowercase() == value.to_lowercase() {

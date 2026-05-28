@@ -37,7 +37,8 @@ pub fn run_batch(cli: &Cli) -> anyhow::Result<()> {
         "json" => {
             let entries: Vec<String> = words.iter().map(|word| {
                 let props_str = build_compact(word, &results);
-                format!(r#"{{"word":"{}","props":"{}"}}"#, word, props_str)
+                let indiv = build_individual(word, &results);
+                format!(r#"{{"word":"{}","props":"{}"{}}}"#, word, props_str, indiv)
             }).collect();
             entries.join("\n")
         }
@@ -72,6 +73,26 @@ fn build_compact(word: &str, results: &std::collections::HashMap<String, Vec<tex
             let codes: Vec<String> = e.grammemes.iter().map(|g| g.code.clone()).collect();
             let pos = e.pos.clone().unwrap_or_default();
             return compact_features(&e.lemma, &pos, &codes);
+        }
+    }
+    String::new()
+}
+
+/// Build individual property pairs for JSON output.
+fn build_individual(word: &str, results: &std::collections::HashMap<String, Vec<text_researcher_core::DictEntry>>) -> String {
+    if let Some(entry_list) = results.get(word) {
+        let best = entry_list.iter().find(|e| !e.grammemes.is_empty() || e.pos.is_some())
+            .or_else(|| entry_list.first());
+        if let Some(e) = best {
+            let mut parts = vec![format!(r#""lem":"{}""#, e.lemma)];
+            if let Some(ref pos) = e.pos {
+                parts.push(format!(r#""pos":"{}""#, pos));
+            }
+            for gram in &e.grammemes {
+                let short = text_researcher_core::morphology::feature_for_value(&gram.code);
+                parts.push(format!(r#""{}":"{}""#, short, gram.code));
+            }
+            return format!(",{}", parts.join(","));
         }
     }
     String::new()
