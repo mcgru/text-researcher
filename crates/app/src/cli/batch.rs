@@ -1,4 +1,5 @@
 use std::fs;
+use std::io::{self, BufWriter, Write};
 use std::path::Path;
 
 use text_researcher_core::{DictConfig, GlobalConfig, open_backend};
@@ -6,12 +7,14 @@ use text_researcher_core::morphology::compact_features;
 
 use crate::cli::args::Cli;
 
+const CHUNK_SIZE: usize = 100;
+
 /// Run batch analysis: lookup all words in dictionary, output txt or json.
 pub fn run_batch(cli: &Cli) -> anyhow::Result<()> {
     let input_path = cli.input.as_ref().expect("input file required for batch mode");
 
     // Load config
-    let config = GlobalConfig::load()?;
+    let _config = GlobalConfig::load()?;
 
     // Read input file
     let text = fs::read_to_string(input_path)
@@ -27,38 +30,39 @@ pub fn run_batch(cli: &Cli) -> anyhow::Result<()> {
         .map(|w| w.trim_matches(|c: char| !c.is_alphanumeric() && c != '-').to_string())
         .filter(|w| !w.is_empty())
         .collect();
-    let word_refs: Vec<&str> = words.iter().map(|w| w.as_str()).collect();
 
-    // Parallel lookup
-    let results = dict.lookup_batch(&word_refs);
+    // Output stream: file or stdout
+    let mut writer: Box<dyn Write> = if let Some(output_path) = &cli.output {
+        let file = fs::File::create(output_path)
+            .map_err(|e| anyhow::anyhow!("failed to create output file: {}", e))?;
+        Box::new(BufWriter::new(file))
+    } else {
+        Box::new(io::stdout().lock())
+    };
 
-    // Build output
-    let output: String = match cli.format.as_str() {
-        "json" => {
-            let entries: Vec<String> = words.iter().map(|word| {
+    let is_json = cli.format == "json";
+
+    // Process in chunks
+    for chunk in words.chunks(CHUNK_SIZE) {
+        let refs: Vec<&str> = chunk.iter().map(|w| w.as_str()).collect();
+        let results = dict.lookup_batch(&refs);
+
+        for word in chunk {
+            let line = if is_json {
                 let props_str = build_compact(word, &results);
                 let indiv = build_individual(word, &results);
                 format!(r#"{{"word":"{}","props":"{}"{}}}"#, word, props_str, indiv)
-            }).collect();
-            entries.join("\n")
-        }
-        _ => {
-            // Text format: word\t@lem:..., @pos:...
-            let lines: Vec<String> = words.iter().map(|word| {
+            } else {
                 let props_str = build_compact(word, &results);
                 format!("{}\t{}", word, props_str)
-            }).collect();
-            lines.join("\n")
+            };
+            writeln!(writer, "{}", line)?;
         }
-    };
+        writer.flush()?;
+    }
 
-    // Output
-    if let Some(output_path) = &cli.output {
-        fs::write(output_path, &output)
-            .map_err(|e| anyhow::anyhow!("failed to write output: {}", e))?;
-        eprintln!("Output written to {}", output_path.display());
-    } else {
-        println!("{}", output);
+    if cli.output.is_some() {
+        eprintln!("Output written to {}", cli.output.as_ref().unwrap().display());
     }
 
     Ok(())
