@@ -340,7 +340,8 @@ impl AppState {
                             if !self.prefetch_pending {
                                 self.start_background_prefetch();
                             }
-                            Action::None
+                            // PropsPane handles action keys (c, e, etc.) even when text is focused
+                            self.props.handle_input(key)
                         }
                         Focus::Props => self.props.handle_input(key),
                         Focus::Log => self.log.handle_input(key),
