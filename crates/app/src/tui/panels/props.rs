@@ -1,4 +1,4 @@
-use ratatui::crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
+use ratatui::crossterm::event::{KeyCode, KeyEvent};
 use ratatui::layout::Rect;
 use ratatui::style::{Color, Style};
 use ratatui::text::{Line, Span};
@@ -46,6 +46,11 @@ impl PropsPane {
     /// Set the compact feature line (@lem:..., @case:..., ...).
     pub fn set_compact_line(&mut self, line: &str) {
         self.compact_line = line.to_string();
+    }
+
+    /// Get the compact feature line.
+    pub fn compact_line(&self) -> &str {
+        &self.compact_line
     }
 
     /// Clear props (no word selected).
@@ -117,8 +122,8 @@ impl Panel for PropsPane {
         if key.code == KeyCode::Char('e') {
             return Action::EditWord { word_index: 0 };
         }
-        // Ctrl+C: copy compact feature line to clipboard
-        if key.code == KeyCode::Char('c') && key.modifiers.contains(KeyModifiers::CONTROL) {
+        // 'c' or 'с' (Russian): copy compact line to clipboard
+        if matches!(key.code, KeyCode::Char('c') | KeyCode::Char('с') | KeyCode::Char('C') | KeyCode::Char('С')) {
             if !self.compact_line.is_empty() {
                 if let Ok(mut clipboard) = arboard::Clipboard::new() {
                     let _ = clipboard.set_text(&self.compact_line);

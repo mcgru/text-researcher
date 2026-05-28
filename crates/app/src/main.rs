@@ -35,6 +35,9 @@ fn main() -> anyhow::Result<()> {
 fn run_tui(cli: &Cli) -> anyhow::Result<()> {
     tui::app::check_terminal_size()?;
 
+    // Enable mouse capture for double-click support
+    ratatui::crossterm::execute!(std::io::stdout(), ratatui::crossterm::event::EnableMouseCapture)?;
+
     let mut terminal = ratatui::init();
     let mut text_pane = tui::panels::TextPane::new();
     if let Some(input) = &cli.input {
@@ -58,6 +61,7 @@ fn run_tui(cli: &Cli) -> anyhow::Result<()> {
 
     let result = app.run(&mut terminal);
     ratatui::restore();
+    ratatui::crossterm::execute!(std::io::stdout(), ratatui::crossterm::event::DisableMouseCapture)?;
     result?;
     Ok(())
 }

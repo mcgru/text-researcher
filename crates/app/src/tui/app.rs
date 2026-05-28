@@ -2,11 +2,12 @@ use std::collections::HashMap;
 use std::io;
 use std::sync::mpsc;
 use std::thread;
+use std::time::Instant;
 
 use log::info;
 use ratatui::crossterm;
-use ratatui::crossterm::event::{self, Event, KeyCode, KeyEventKind, KeyModifiers};
-use ratatui::layout::{Constraint, Direction, Layout};
+use ratatui::crossterm::event::{self, Event, KeyCode, KeyEventKind, KeyModifiers, MouseEventKind};
+use ratatui::layout::{Constraint, Direction, Layout, Rect};
 use ratatui::{DefaultTerminal, Frame};
 use text_researcher_core::{DictBackend, DictConfig, DictEntry, open_backend};
 
@@ -34,6 +35,7 @@ pub struct AppState {
     prefetch_rx: Option<mpsc::Receiver<HashMap<String, Option<Vec<DictEntry>>>>>,
     prefetch_log_rx: Option<mpsc::Receiver<(String, bool)>>,
     prefetch_pending: bool,
+    last_click: Option<(Instant, u16, u16)>,  // (time, col, row) for double-click detection
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -66,6 +68,7 @@ impl AppState {
             prefetch_rx: None,
             prefetch_log_rx: None,
             prefetch_pending: false,
+            last_click: None,
         }
     }
 
@@ -304,50 +307,48 @@ impl AppState {
     }
 
     fn handle_events(&mut self) -> io::Result<()> {
-        // Always poll for background prefetch results
         self.poll_prefetch();
 
         if event::poll(std::time::Duration::from_millis(16))? {
-            if let Event::Key(key) = event::read()? {
-                if key.kind != KeyEventKind::Press { return Ok(()); }
-
-                // Ctrl combos
-                if key.modifiers.contains(KeyModifiers::CONTROL) {
+            let ev = event::read()?;
+            match ev {
+                Event::Mouse(mouse) => {
+                    self.handle_mouse(mouse);
+                }
+                Event::Key(key) if key.kind == KeyEventKind::Press => {
+                    if key.modifiers.contains(KeyModifiers::CONTROL) {
+                        match key.code {
+                            KeyCode::Char('s') => { self.save(); return Ok(()); }
+                            KeyCode::Char('q') => { self.running = false; return Ok(()); }
+                            _ => {}
+                        }
+                    }
                     match key.code {
-                        KeyCode::Char('s') => { self.save(); return Ok(()); }
-                        KeyCode::Char('q') => { self.running = false; return Ok(()); }
+                        KeyCode::Esc => { self.running = false; return Ok(()); }
+                        KeyCode::Tab => { self.cycle_focus(); return Ok(()); }
                         _ => {}
                     }
-                }
-
-                match key.code {
-                    KeyCode::Esc => { self.running = false; return Ok(()); }
-                    KeyCode::Tab => { self.cycle_focus(); return Ok(()); }
-                    _ => {}
-                }
-
-                // Shortcuts
-                if let Some(action) = self.shortcuts.handle(key) {
-                    self.dispatch(action);
-                    return Ok(());
-                }
-
-                // Panel input
-                let action = match self.focused {
-                    Focus::Menu => self.menu.handle_input(key),
-                    Focus::Text => {
-                        self.text.handle_input(key);
-                        self.lookup_current_word();
-                        if !self.prefetch_pending {
-                            self.start_background_prefetch();
-                        }
-                        Action::None
+                    if let Some(action) = self.shortcuts.handle(key) {
+                        self.dispatch(action);
+                        return Ok(());
                     }
-                    Focus::Props => self.props.handle_input(key),
-                    Focus::Log => self.log.handle_input(key),
-                    Focus::Extra(i) => self.extras[i].handle_input(key),
-                };
-                self.dispatch(action);
+                    let action = match self.focused {
+                        Focus::Menu => self.menu.handle_input(key),
+                        Focus::Text => {
+                            self.text.handle_input(key);
+                            self.lookup_current_word();
+                            if !self.prefetch_pending {
+                                self.start_background_prefetch();
+                            }
+                            Action::None
+                        }
+                        Focus::Props => self.props.handle_input(key),
+                        Focus::Log => self.log.handle_input(key),
+                        Focus::Extra(i) => self.extras[i].handle_input(key),
+                    };
+                    self.dispatch(action);
+                }
+                _ => {}
             }
         }
         Ok(())
@@ -386,6 +387,37 @@ impl AppState {
             self.project_path = Some(path);
             self.dirty = false;
             self.status.update("", 1, self.text.cursor_word_index(), "RU", false);
+        }
+    }
+
+    fn copy_compact_line(&mut self) {
+        let compact = self.props.compact_line().to_string();
+        if !compact.is_empty() {
+            if let Ok(mut clipboard) = arboard::Clipboard::new() {
+                let _ = clipboard.set_text(&compact);
+            }
+        }
+    }
+
+    fn handle_mouse(&mut self, mouse: ratatui::crossterm::event::MouseEvent) {
+        if mouse.kind == MouseEventKind::Down(ratatui::crossterm::event::MouseButton::Left) {
+            let now = Instant::now();
+            let (col, row) = (mouse.column, mouse.row);
+
+            if let Some((last_time, last_col, last_row)) = self.last_click {
+                if last_col == col && last_row == row
+                    && now.duration_since(last_time).as_millis() < 500
+                {
+                    if self.focused == Focus::Props {
+                        self.copy_compact_line();
+                    }
+                    self.last_click = None;
+                } else {
+                    self.last_click = Some((now, col, row));
+                }
+            } else {
+                self.last_click = Some((now, col, row));
+            }
         }
     }
 }
