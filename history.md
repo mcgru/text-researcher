@@ -222,4 +222,51 @@ User: удаляй знаки препинания, кавычки
 
 User: сохрани историю, закоммить, запуш
   → Этот раздел
+
+## 2026-05-26 — Multi-backend, Morphology, Batch, UI
+
+### PostgreSQL + SQLite Multi-backend
+- **0.6.0:** DictBackend trait, SqliteBackend + PostgresBackend, DICT_BACKEND env/config
+
+### UI Refinements
+- **0.6.1:** PropsPane word wrap
+- **0.6.2:** English codes in PropsPane (alias, code), morphology.rs reference module
+- **0.6.3:** POS line shows English UD code
+- **0.6.4:** Compact feature line (@lem:..., @case:...) below separator
+- **0.6.5:** Ctrl+C copy to clipboard via arboard
+- **0.6.6:** Copy via 'c' key + double-click mouse, mouse capture enabled
+- **0.6.7:** Clipboard keep-alive fix, Tab focus: Text→Props→Menu, Log not focusable
+- **0.6.8:** PropsPane handles 'c'/'e' even when TextPane focused
+
+### Batch Mode Overhaul
+- **0.7.0:** Batch output: word + compact props string, OpenCorpora values in morphology
+- **0.7.1:** JSON: individual lemm/props fields alongside compact props string
+- **0.7.2:** Chunked batch output: 100→10 words/chunk, flush after each
+- **0.7.3:** Configurable batch_chunk_size via config.json (default 10)
+
+### Config & Help
+- **0.7.4:** --init: generate documented config.json, backup with timestamp
+- **0.7.5:** --init: clean config.json + config.json.txt docs
+- **0.7.6:** --help-features: morphology features + POS reference tables
+- **0.7.7:** --init: never overwrite, always timestamped copy alongside
+
+### Raw Conversation Flow (continued)
+
+User: PostgreSQL как db-end
+  → DictBackend trait + SqliteBackend + PostgresBackend
+
+User: PropsPane wrap, English codes, compact line, clipboard
+  → 0.6.1–0.6.6
+
+User: Tab focus, 'c' without focus switch
+  → 0.6.7–0.6.8
+
+User: batch output word + compact string
+  → 0.7.0–0.7.2
+
+User: config chunk size, --init, --help-features
+  → 0.7.3–0.7.7
+
+User: сохрани историю, закоммить, собери, запуш
+  → Этот раздел
 ```
