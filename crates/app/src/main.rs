@@ -75,50 +75,53 @@ fn run_init() -> anyhow::Result<()> {
         .unwrap_or_else(|| std::path::PathBuf::from("."))
         .join("text-researcher");
     let config_path = config_dir.join("config.json");
+    let doc_path = config_dir.join("config.json.txt");
 
     if config_path.exists() {
-        // Backup with timestamp suffix
         let now = chrono::Local::now();
-        let backup = config_dir.join(format!(
-            "config.json.{}",
-            now.format("%Y%m%d-%H%M%S")
-        ));
-        std::fs::copy(&config_path, &backup)
-            .map_err(|e| anyhow::anyhow!("failed to backup config: {}", e))?;
-        eprintln!("Existing config backed up to {}", backup.display());
+        let ts = now.format("%Y%m%d-%H%M%S");
+        let backup = config_dir.join(format!("config.json.{}", ts));
+        std::fs::copy(&config_path, &backup)?;
+        eprintln!("Backup: {}", backup.display());
+
+        let doc_backup = config_dir.join(format!("config.json.txt.{}", ts));
+        if doc_path.exists() {
+            std::fs::copy(&doc_path, &doc_backup)?;
+        }
     } else {
-        std::fs::create_dir_all(&config_dir)
-            .map_err(|e| anyhow::anyhow!("failed to create config dir: {}", e))?;
+        std::fs::create_dir_all(&config_dir)?;
     }
 
     let default_config = GlobalConfig::default();
     let json = serde_json::to_string_pretty(&default_config)?;
 
-    // Build documented config with comments
-    let documented = format!(
-        r#"// text-researcher global configuration
-// Location: {}
-//
-// Fields:
-//   default_language    — default language for analysis (e.g., "ru", "en")
-//   model_dir           — directory with UDPipe .udpipe model files
-//   log_level           — logging level: "error", "warn", "info", "debug", "trace"
-//   batch_chunk_size    — words per batch chunk for progressive output (default: 10)
-//
-// Dictionary backend is configured via:
-//   DICT_BACKEND env   — "sqlite" (default) or "postgres"
-//   DICT_PATH env      — path to SQLite database
-//   DATABASE_URL env   — PostgreSQL connection string
-//   or in config.json: {{ "dictionary": {{ "backend": "sqlite", ... }} }}
-{}
-"#,
-        config_path.display(),
-        json
-    );
+    // Write clean config.json
+    std::fs::write(&config_path, &json)?;
+    eprintln!("Config: {}", config_path.display());
 
-    std::fs::write(&config_path, &documented)
-        .map_err(|e| anyhow::anyhow!("failed to write config: {}", e))?;
-    eprintln!("Config written to {}", config_path.display());
+    // Write documented config.json.txt
+    let doc = format!(
+        "text-researcher global configuration\n\
+         Location: {config}\n\
+         \n\
+         Fields:\n\
+           default_language     - default language (e.g., \"ru\", \"en\")\n\
+           model_dir            - directory with UDPipe .udpipe model files\n\
+           log_level            - logging: \"error\", \"warn\", \"info\", \"debug\", \"trace\"\n\
+           batch_chunk_size     - words per batch chunk (default: 10)\n\
+         \n\
+         Dictionary backend (env vars or config.json dictionary section):\n\
+           DICT_BACKEND  - \"sqlite\" (default) or \"postgres\"\n\
+           DICT_PATH     - path to SQLite .db file\n\
+           DATABASE_URL  - PostgreSQL connection string\n\
+         \n\
+         Example config.json:\n\
+{json}",
+        config = config_path.display(),
+        json = json,
+    );
+    std::fs::write(&doc_path, &doc)?;
+    eprintln!("Docs:    {}", doc_path.display());
 
     Ok(())
 }
