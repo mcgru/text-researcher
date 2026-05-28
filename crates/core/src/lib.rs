@@ -11,6 +11,6 @@ pub mod model;
 
 pub use analyzer::Analyzer;
 pub use config::{GlobalConfig, SessionConfig};
-pub use dictionary::{DictEntry, Grammeme, OpenCorporaDict};
+pub use dictionary::{DictBackend, DictConfig, DictEntry, Grammeme, open_backend};
 pub use error::CoreError;
 pub use model::ModelManager;

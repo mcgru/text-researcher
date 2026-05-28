@@ -8,7 +8,7 @@ use ratatui::crossterm;
 use ratatui::crossterm::event::{self, Event, KeyCode, KeyEventKind, KeyModifiers};
 use ratatui::layout::{Constraint, Direction, Layout};
 use ratatui::{DefaultTerminal, Frame};
-use text_researcher_core::{DictEntry, OpenCorporaDict};
+use text_researcher_core::{DictBackend, DictConfig, DictEntry, open_backend};
 
 use super::panels::{
     Action, LogPane, MenuBar, Panel, ProjectFile, PropsPane, ShortcutHandler, StatusBar, TextPane,
@@ -27,7 +27,8 @@ pub struct AppState {
     shortcuts: ShortcutHandler,
     project_path: Option<String>,
     dirty: bool,
-    dict: Option<OpenCorporaDict>,
+    dict: Option<Box<dyn DictBackend>>,
+    dict_config: Option<DictConfig>,
     prefetch_cache: HashMap<String, Option<Vec<DictEntry>>>,
     prefetch_count: isize,
     prefetch_rx: Option<mpsc::Receiver<HashMap<String, Option<Vec<DictEntry>>>>>,
@@ -59,6 +60,7 @@ impl AppState {
             project_path: None,
             dirty: false,
             dict: None,
+            dict_config: None,
             prefetch_cache: HashMap::new(),
             prefetch_count: -1,
             prefetch_rx: None,
@@ -67,8 +69,9 @@ impl AppState {
         }
     }
 
-    pub fn set_dictionary(&mut self, dict: OpenCorporaDict) {
+    pub fn set_dictionary(&mut self, dict: Box<dyn DictBackend>, config: DictConfig) {
         self.dict = Some(dict);
+        self.dict_config = Some(config);
         // Immediate: show properties for first word
         self.lookup_current_word();
         // Then start background prefetch
@@ -110,7 +113,7 @@ impl AppState {
         self.log.log(&format!("prefetch {} words", words.len()));
         self.prefetch_pending = true;
 
-        let dict_path = self.dict.as_ref().unwrap().path().to_path_buf();
+        let dict_config = self.dict_config.clone().unwrap();
         let (tx, rx) = mpsc::channel();
         let (log_tx, log_rx) = mpsc::channel();
 
@@ -121,7 +124,7 @@ impl AppState {
             let pause = std::time::Duration::from_millis(50);
             let mut results: HashMap<String, Option<Vec<DictEntry>>> = HashMap::new();
 
-            if let Ok(dict) = OpenCorporaDict::open(&dict_path) {
+            if let Ok(dict) = open_backend(&dict_config) {
                 for chunk in words.chunks(batch_size) {
                     let refs: Vec<&str> = chunk.iter().map(|w| w.as_str()).collect();
                     let found = dict.lookup_batch(&refs);

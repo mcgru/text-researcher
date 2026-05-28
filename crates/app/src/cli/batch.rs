@@ -1,7 +1,7 @@
 use std::fs;
 use std::path::Path;
 
-use text_researcher_core::{GlobalConfig, OpenCorporaDict};
+use text_researcher_core::{DictConfig, GlobalConfig, open_backend};
 
 use crate::cli::args::Cli;
 
@@ -17,9 +17,8 @@ pub fn run_batch(cli: &Cli) -> anyhow::Result<()> {
         .map_err(|e| anyhow::anyhow!("failed to read input file '{}': {}", input_path.display(), e))?;
 
     // Load dictionary
-    let dict_path = std::env::var("DICT_PATH")
-        .unwrap_or_else(|_| ".data/dict.opcorpora.sqlite3.db".into());
-    let dict = OpenCorporaDict::open(&dict_path)
+    let dict_config = DictConfig::from_env_or_default();
+    let dict = open_backend(&dict_config)
         .map_err(|e| anyhow::anyhow!("failed to open dictionary: {}", e))?;
 
     // Extract words and clean punctuation
