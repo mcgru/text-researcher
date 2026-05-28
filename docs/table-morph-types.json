@@ -1,0 +1,131 @@
+{
+  "descr": "universal dependencies (UD): NOUN, VERB",
+  "parts_of_speech": [
+    {
+      "type": "NOUN",
+      "short_ru": "с",
+      "medium_ru": "сущ",
+      "description_ru": "имя существительное",
+      "full_name_en": "noun"
+    },
+    {
+      "type": "VERB",
+      "short_ru": "г",
+      "medium_ru": "глаг",
+      "description_ru": "личная форма глагола",
+      "full_name_en": "finite verb"
+    },
+    {
+      "type": "ADJF",
+      "short_ru": "п",
+      "medium_ru": "прилп",
+      "description_ru": "полное прилагательное",
+      "full_name_en": "adjective (full form)"
+    },
+    {
+      "type": "ADJS",
+      "short_ru": "к",
+      "medium_ru": "прилк",
+      "description_ru": "краткое прилагательное",
+      "full_name_en": "adjective (short form)"
+    },
+    {
+      "type": "ADVB",
+      "short_ru": "н",
+      "medium_ru": "нарзн",
+      "description_ru": "знаменательное наречие",
+      "full_name_en": "notional adverb"
+    },
+    {
+      "type": "COMP",
+      "short_ru": "ср",
+      "medium_ru": "срав",
+      "description_ru": "сравнительная степень (компаратив)",
+      "full_name_en": "comparative"
+    },
+    {
+      "type": "PRTF",
+      "short_ru": "пч",
+      "medium_ru": "причп",
+      "description_ru": "полное причастие",
+      "full_name_en": "participle (full form)"
+    },
+    {
+      "type": "PRTS",
+      "short_ru": "кч",
+      "medium_ru": "причк",
+      "description_ru": "краткое причастие",
+      "full_name_en": "participle (short form)"
+    },
+    {
+      "type": "GRND",
+      "short_ru": "д",
+      "medium_ru": "деепр",
+      "description_ru": "деепричастие",
+      "full_name_en": "gerund / adverbial participle"
+    },
+    {
+      "type": "INFN",
+      "short_ru": "и",
+      "medium_ru": "инф",
+      "description_ru": "инфинитив (неопределённая форма)",
+      "full_name_en": "infinitive"
+    },
+    {
+      "type": "PRED",
+      "short_ru": "пд",
+      "medium_ru": "пред",
+      "description_ru": "предикатив (категория состояния)",
+      "full_name_en": "predicative"
+    },
+    {
+      "type": "PREP",
+      "short_ru": "пр",
+      "medium_ru": "предл",
+      "description_ru": "предлог",
+      "full_name_en": "preposition"
+    },
+    {
+      "type": "CONJ",
+      "short_ru": "сз",
+      "medium_ru": "союз",
+      "description_ru": "союз",
+      "full_name_en": "conjunction"
+    },
+    {
+      "type": "PRCL",
+      "short_ru": "ч",
+      "medium_ru": "част",
+      "description_ru": "частица",
+      "full_name_en": "particle"
+    },
+    {
+      "type": "INTJ",
+      "short_ru": "м",
+      "medium_ru": "межд",
+      "description_ru": "междометие",
+      "full_name_en": "interjection"
+    },
+    {
+      "type": "NUMR",
+      "short_ru": "чл",
+      "medium_ru": "числ",
+      "description_ru": "имя числительное",
+      "full_name_en": "numeral"
+    },
+    {
+      "type": "NPRO",
+      "short_ru": "мс",
+      "medium_ru": "мест",
+      "description_ru": "местоимение",
+      "full_name_en": "pronoun"
+    },
+    {
+      "type": "ADV",
+      "short_ru": "н",
+      "medium_ru": "нареч",
+      "description_ru": "наречие (общее, включая местоименные)",
+      "full_name_en": "adverb (general)"
+    }
+  ]
+}

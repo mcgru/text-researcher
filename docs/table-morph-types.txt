@@ -1,0 +1,21 @@
+
+Тип (англ.)	Аналог на русском (кратко)	Описание на русском	Полное название на английском
+NOUN	с	имя существительное	noun
+VERB	г	личная форма глагола	finite verb
+ADJF	п	полное прилагательное	adjective (full form)
+ADJS	к	краткое прилагательное	adjective (short form)
+ADVB	н	наречие (знаменательное)	adverb (notional)
+COMP	ср	сравнительная степень (компаратив)	comparative
+PRTF	пч	полное причастие	participle (full form)
+PRTS	кч	краткое причастие	participle (short form)
+GRND	д	деепричастие	gerund / adverbial participle
+INFN	и	инфинитив (неопределённая форма)	infinitive
+PRED	пд	предикатив (категория состояния)	predicative
+PREP	пр	предлог	preposition
+CONJ	сз	союз	conjunction
+PRCL	ч	частица	particle
+INTJ	м	междометие	interjection
+NUMR	чл	имя числительное	numeral
+NPRO	мс	местоимение	pronoun
+ADV	н	наречие (общее, включая местоименные)	adverb (general)
+

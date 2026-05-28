@@ -1,0 +1,9 @@
+     1 # SQLite (по умолчанию)
+     2 DICT_PATH=.data/dict.opcorpora.sqlite3.db text-researcher -i file.txt
+     3 
+     4 # PostgreSQL
+     5 DICT_BACKEND=postgres DATABASE_URL=postgres://user:pass@localhost/opcorpora text-researcher -i file.txt
+     6 
+     7 # Или через config.json
+     8 echo '{"dictionary":{"backend":"postgres","postgres_url":"postgres://..."}}' > ~/.config/text-researcher/config.json
+
